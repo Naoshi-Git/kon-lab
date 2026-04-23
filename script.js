@@ -358,21 +358,6 @@ async function createFinalPdfBlob() {
     const freshBuffer = await currentFile.arrayBuffer();
     const srcDoc = await PDFDocument.load(freshBuffer);
     
-    const pageIndicesNeeded = new Set();
-    pageMapping.forEach(item => {
-        if (item.type === 'page') pageIndicesNeeded.add(item.pageIndex);
-    });
-    
-    const indicesArray = Array.from(pageIndicesNeeded).sort((a,b)=>a-b);
-    if(indicesArray.length === 0) return null; // No pages
-    
-    const embeddedPages = await finalDoc.embedPdf(srcDoc, indicesArray);
-    
-    const indexMap = {};
-    for(let i=0; i<indicesArray.length; i++) {
-        indexMap[indicesArray[i]] = embeddedPages[i];
-    }
-
     const A4_W = 595.28;
     const A4_H = 841.89;
     const PAGE_WIDTH = orientation === 'Portrait' ? Math.min(A4_W, A4_H) : Math.max(A4_W, A4_H);
@@ -381,6 +366,43 @@ async function createFinalPdfBlob() {
     const { cols, rows } = getGridConfig(nValue, orientation);
     const cellW = PAGE_WIDTH / cols;
     const cellH = PAGE_HEIGHT / rows;
+
+    const pageIndicesNeeded = new Set();
+    pageMapping.forEach(item => {
+        if (item.type === 'page') pageIndicesNeeded.add(item.pageIndex);
+    });
+    
+    const indicesArray = Array.from(pageIndicesNeeded).sort((a,b)=>a-b);
+    if(indicesArray.length === 0) return null; // No pages
+    
+    // ズーム（拡大縮小）による枠外への「はみ出し」を防ぐため、
+    // 描画時にマスクするのではなく、オリジナルページのCropBoxを事前に縮小（トリミング）します。
+    // この手法はpdf-libの高レベルAPIのみを使用するためエラーが発生せず、出力も完璧にカットされます。
+    for (let idx of indicesArray) {
+        const srcPage = srcDoc.getPage(idx);
+        const origBox = typeof srcPage.getCropBox === 'function' ? srcPage.getCropBox() : { x: 0, y: 0, width: srcPage.getWidth(), height: srcPage.getHeight() };
+        
+        const fitScaleX = cellW / origBox.width;
+        const fitScaleY = cellH / origBox.height;
+        const baseScale = Math.min(fitScaleX, fitScaleY);
+        const finalScale = baseScale * globalScale; 
+        
+        const cropW = cellW / finalScale;
+        const cropH = cellH / finalScale;
+        
+        // 中心を基準にトリミング範囲を計算
+        const cropX = origBox.x + (origBox.width - cropW) / 2;
+        const cropY = origBox.y + (origBox.height - cropH) / 2;
+        
+        srcPage.setCropBox(cropX, cropY, cropW, cropH);
+    }
+    
+    const embeddedPages = await finalDoc.embedPdf(srcDoc, indicesArray);
+    
+    const indexMap = {};
+    for(let i=0; i<indicesArray.length; i++) {
+        indexMap[indicesArray[i]] = embeddedPages[i];
+    }
 
     let currentSheet = null;
     
@@ -404,41 +426,8 @@ async function createFinalPdfBlob() {
             const x = col * cellW;
             const y = PAGE_HEIGHT - (row + 1) * cellH; 
 
-            const fitScaleX = cellW / embeddedPage.width;
-            const fitScaleY = cellH / embeddedPage.height;
-            const baseScale = Math.min(fitScaleX, fitScaleY);
-            
-            const finalScale = baseScale * globalScale; 
-            
-            const w = embeddedPage.width * finalScale;
-            const h = embeddedPage.height * finalScale;
-            
-            const drawX = x + (cellW - w) / 2;
-            const drawY = y + (cellH - h) / 2;
-
-            // スロットの枠でクリッピング（マスク）をかける
-            currentSheet.pushGraphicsState();
-            currentSheet.drawRectangle({
-                x: x,
-                y: y,
-                width: cellW,
-                height: cellH,
-                borderWidth: 0,
-                opacity: 0,
-            });
-
-            // 低レベルオペレーターを使用してクリッピングを確定させる
-            // W: 枠をクリッピングパスに設定, n: パスを終了
-            const { PDFOperator } = window.PDFLib;
-            if (currentSheet.node && currentSheet.node.addContentStream) {
-                const clipOp = currentSheet.doc.context.register(PDFOperator.of('W'));
-                const endOp = currentSheet.doc.context.register(PDFOperator.of('n'));
-                currentSheet.node.addContentStream(clipOp);
-                currentSheet.node.addContentStream(endOp);
-            }
-
-            currentSheet.drawPage(embeddedPage, { x: drawX, y: drawY, width: w, height: h });
-            currentSheet.popGraphicsState();
+            // トリミング済みのページを、スロットのサイズ(cellW x cellH)でそのまま描画
+            currentSheet.drawPage(embeddedPage, { x: x, y: y, width: cellW, height: cellH });
         }
         
         currentProgress++;
