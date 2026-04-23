@@ -375,9 +375,7 @@ async function createFinalPdfBlob() {
     const indicesArray = Array.from(pageIndicesNeeded).sort((a,b)=>a-b);
     if(indicesArray.length === 0) return null; // No pages
     
-    // ズーム（拡大縮小）による枠外への「はみ出し」を防ぐため、
-    // 描画時にマスクするのではなく、オリジナルページのCropBoxを事前に縮小（トリミング）します。
-    // この手法はpdf-libの高レベルAPIのみを使用するためエラーが発生せず、出力も完璧にカットされます。
+    const indexMap = {};
     for (let idx of indicesArray) {
         const srcPage = srcDoc.getPage(idx);
         const origBox = typeof srcPage.getCropBox === 'function' ? srcPage.getCropBox() : { x: 0, y: 0, width: srcPage.getWidth(), height: srcPage.getHeight() };
@@ -394,14 +392,15 @@ async function createFinalPdfBlob() {
         const cropX = origBox.x + (origBox.width - cropW) / 2;
         const cropY = origBox.y + (origBox.height - cropH) / 2;
         
-        srcPage.setCropBox(cropX, cropY, cropW, cropH);
-    }
-    
-    const embeddedPages = await finalDoc.embedPdf(srcDoc, indicesArray);
-    
-    const indexMap = {};
-    for(let i=0; i<indicesArray.length; i++) {
-        indexMap[indicesArray[i]] = embeddedPages[i];
+        // embedPageを使用して、明示的なBoundingBox（切り抜き範囲）を指定してXObjectを作成
+        const embeddedPage = await finalDoc.embedPage(srcPage, {
+            left: cropX,
+            bottom: cropY,
+            right: cropX + cropW,
+            top: cropY + cropH
+        });
+        
+        indexMap[idx] = embeddedPage;
     }
 
     let currentSheet = null;
