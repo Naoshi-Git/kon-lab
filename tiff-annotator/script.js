@@ -225,7 +225,7 @@ window.addEventListener('mouseup', () => { isPanning = false; isDraggingCircle =
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 mainView.addEventListener('wheel', (e) => {
-    if (!image) return;
+    if (!image || !e.shiftKey) return;
     e.preventDefault();
     const zoomFactor = 1.15;
     const direction = e.deltaY > 0 ? -1 : 1;
