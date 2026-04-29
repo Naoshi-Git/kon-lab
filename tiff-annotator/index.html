@@ -27,11 +27,11 @@
                 <div class="control-group">
                     <label>Colors</label>
                     <div id="color-palette">
-                        <button class="color-btn active" data-color="#ff0000" style="background-color: #ff0000;" title="Red"></button>
-                        <button class="color-btn" data-color="#0000ff" style="background-color: #0000ff;" title="Blue"></button>
-                        <button class="color-btn" data-color="#ffff00" style="background-color: #ffff00;" title="Yellow"></button>
-                        <button class="color-btn" data-color="#ffa500" style="background-color: #ffa500;" title="Orange"></button>
-                        <button class="color-btn" data-color="#008000" style="background-color: #008000;" title="Green"></button>
+                        <button class="color-btn active" data-color="#ff00ff" style="background-color: #ff00ff;" title="Magenta"></button>
+                        <button class="color-btn" data-color="#00ffff" style="background-color: #00ffff;" title="Cyan"></button>
+                        <button class="color-btn" data-color="#00ff00" style="background-color: #00ff00;" title="Lime"></button>
+                        <button class="color-btn" data-color="#ccff00" style="background-color: #ccff00;" title="Neon Yellow"></button>
+                        <button class="color-btn" data-color="#ff6600" style="background-color: #ff6600;" title="Orange"></button>
                         <div class="custom-color-wrapper" id="custom-color-btn" title="Custom Color">
                             <input type="color" id="custom-color" class="custom-color-picker" value="#ff00ff">
                         </div>
@@ -62,6 +62,14 @@
             </div>
 
             <div class="panel actions">
+                <div class="control-group checkbox-group">
+                    <input type="checkbox" id="opt-log">
+                    <label for="opt-log">Export Stats Log (.txt)</label>
+                </div>
+                <div class="control-group checkbox-group">
+                    <input type="checkbox" id="opt-summary">
+                    <label for="opt-summary">Overlay Summary on Image</label>
+                </div>
                 <button id="export-btn" class="primary-btn">Export JPEG</button>
             </div>
             

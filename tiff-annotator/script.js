@@ -9,11 +9,19 @@ const mainView = document.getElementById('main-view');
 let image = null; 
 let currentFileName = 'annotated_image';
 let annotations = []; // { x, y, color }
-let currentColor = '#ff0000';
+let currentColor = '#ff00ff'; // Default to Magenta
 let currentRadius = 10;
 let currentThickness = 2;
 let currentTextSize = 16;
-let colorTags = {}; // Custom tag texts { '#ff0000': 'Mitochondria' }
+let colorTags = {}; // Custom tag texts { '#ff00ff': 'Mitochondria' }
+
+// Options (Persistent)
+let exportWithLog = false;
+let exportWithSummary = false;
+
+// LocalStorage Keys
+const STORAGE_TAGS = 'tiff_annotator_tags';
+const STORAGE_OPTS = 'tiff_annotator_options';
 
 // Transform state
 let scale = 1;
@@ -26,6 +34,26 @@ let draggedCircle = null;
 let isPanning = false;
 let startPanX = 0;
 let startPanY = 0;
+
+// Load Settings
+function loadSettings() {
+    const savedTags = localStorage.getItem(STORAGE_TAGS);
+    if (savedTags) colorTags = JSON.parse(savedTags);
+
+    const savedOpts = localStorage.getItem(STORAGE_OPTS);
+    if (savedOpts) {
+        const opts = JSON.parse(savedOpts);
+        exportWithLog = !!opts.log;
+        exportWithSummary = !!opts.summary;
+        document.getElementById('opt-log').checked = exportWithLog;
+        document.getElementById('opt-summary').checked = exportWithSummary;
+    }
+}
+
+function saveSettings() {
+    localStorage.setItem(STORAGE_TAGS, JSON.stringify(colorTags));
+    localStorage.setItem(STORAGE_OPTS, JSON.stringify({ log: exportWithLog, summary: exportWithSummary }));
+}
 
 // Init Event Listeners for UI
 document.querySelectorAll('.color-btn').forEach(btn => {
@@ -42,7 +70,6 @@ const customColor = document.getElementById('custom-color');
 
 customColorBtn.addEventListener('click', (e) => {
     if (e.target === customColorBtn) customColor.click();
-    
     document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
     customColorBtn.classList.add('active');
     currentColor = customColor.value;
@@ -71,6 +98,9 @@ document.getElementById('textsize-slider').addEventListener('input', (e) => {
     document.getElementById('textsize-val').innerText = currentTextSize;
     draw();
 });
+
+document.getElementById('opt-log').addEventListener('change', (e) => { exportWithLog = e.target.checked; saveSettings(); });
+document.getElementById('opt-summary').addEventListener('change', (e) => { exportWithSummary = e.target.checked; saveSettings(); });
 
 // File Handling
 window.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -116,15 +146,17 @@ function loadImageFromUrl(url) {
 }
 
 function resetView() {
+    if (!image) return;
     canvas.width = image.width; canvas.height = image.height;
-    const viewRect = document.getElementById('main-view').getBoundingClientRect();
+    const viewEl = document.getElementById('main-view');
+    const viewRect = viewEl.getBoundingClientRect();
     const scaleX = viewRect.width / image.width;
     const scaleY = viewRect.height / image.height;
     scale = Math.min(scaleX, scaleY) * 0.9;
     if (scale > 1) scale = 1;
     panX = (viewRect.width - image.width * scale) / 2;
     panY = (viewRect.height - image.height * scale) / 2;
-    annotations = []; // Note: colorTags are explicitly NOT cleared here.
+    annotations = []; 
     updateStats(); updateTransform(); draw();
 }
 
@@ -136,7 +168,6 @@ function draw() {
 }
 
 function drawAnnotations(targetCtx) {
-    // Determine the last index for each color and total counts
     let counters = {};
     let lastIndices = {};
     
@@ -146,7 +177,6 @@ function drawAnnotations(targetCtx) {
     });
 
     annotations.forEach((ann, index) => {
-        // Draw Circle
         targetCtx.beginPath();
         targetCtx.arc(ann.x, ann.y, currentRadius, 0, 2 * Math.PI);
         targetCtx.lineWidth = currentThickness;
@@ -154,23 +184,18 @@ function drawAnnotations(targetCtx) {
         targetCtx.globalAlpha = 1.0;
         targetCtx.stroke();
         
-        // Draw Text only if it's the last added annotation of this color
         if (index === lastIndices[ann.color]) {
             const num = counters[ann.color];
-            
             targetCtx.fillStyle = ann.color;
             targetCtx.font = `bold ${currentTextSize}px Arial`;
             targetCtx.textAlign = 'left';
             targetCtx.textBaseline = 'middle';
-            
-            targetCtx.globalAlpha = 0.75; // Semi-transparent text
-            
+            targetCtx.globalAlpha = 0.75;
             targetCtx.lineWidth = Math.max(2, currentTextSize * 0.15);
             targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
             targetCtx.strokeText(num, ann.x + currentRadius + 5, ann.y);
             targetCtx.fillText(num, ann.x + currentRadius + 5, ann.y);
-            
-            targetCtx.globalAlpha = 1.0; // Reset
+            targetCtx.globalAlpha = 1.0;
         }
     });
 }
@@ -184,7 +209,6 @@ function getMousePos(e) {
     return { x: (e.clientX - rect.left) / scale, y: (e.clientY - rect.top) / scale };
 }
 
-// Interaction
 canvas.addEventListener('mousedown', (e) => {
     if (!image) return;
     if (e.button === 1 || (e.shiftKey && e.button === 0)) {
@@ -192,16 +216,12 @@ canvas.addEventListener('mousedown', (e) => {
         canvas.style.cursor = 'grabbing'; e.preventDefault(); return;
     }
     const pos = getMousePos(e);
-    
     if (e.button === 2) { removeNearest(pos); return; }
-    
     if (e.button === 0) {
         const clicked = findNearest(pos);
         const hitDistance = currentRadius + Math.max(5, currentThickness);
-        
         if (clicked && distance(pos, clicked) < hitDistance) {
             if (clicked.color !== currentColor) {
-                // Change color and move to end of array to be the "latest"
                 clicked.color = currentColor;
                 annotations = annotations.filter(a => a !== clicked);
                 annotations.push(clicked);
@@ -259,9 +279,7 @@ function updateStats() {
         const row = document.createElement('div');
         row.className = 'stat-row';
         row.style.borderLeftColor = color;
-        
         const defaultVal = colorTags[color] !== undefined ? colorTags[color] : color.toUpperCase();
-        
         row.innerHTML = `
             <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
                 <span class="stat-color-indicator" style="background-color: ${color}"></span>
@@ -275,6 +293,7 @@ function updateStats() {
     document.querySelectorAll('.tag-input').forEach(input => {
         input.addEventListener('input', (e) => {
             colorTags[e.target.dataset.color] = e.target.value;
+            saveSettings();
         });
     });
     
@@ -283,12 +302,65 @@ function updateStats() {
 
 document.getElementById('export-btn').addEventListener('click', () => {
     if (!image) { alert("Please load an image first."); return; }
+    
+    let colorCounts = {};
+    annotations.forEach(a => { colorCounts[a.color] = (colorCounts[a.color] || 0) + 1; });
+
+    // 1. Prepare Image Export
     const expCanvas = document.createElement('canvas');
-    expCanvas.width = canvas.width; expCanvas.height = canvas.height;
+    let finalHeight = canvas.height;
+    const footerPadding = currentTextSize * 2.5;
+    if (exportWithSummary && Object.keys(colorCounts).length > 0) {
+        finalHeight += footerPadding;
+    }
+    expCanvas.width = canvas.width;
+    expCanvas.height = finalHeight;
     const expCtx = expCanvas.getContext('2d');
-    expCtx.fillStyle = "#ffffff"; expCtx.fillRect(0, 0, expCanvas.width, expCanvas.height);
+    
+    expCtx.fillStyle = "#ffffff";
+    expCtx.fillRect(0, 0, expCanvas.width, expCanvas.height);
     expCtx.drawImage(image, 0, 0);
     drawAnnotations(expCtx);
-    const link = document.createElement('a'); link.download = `${currentFileName}_annotated.jpg`;
-    link.href = expCanvas.toDataURL('image/jpeg', 0.95); link.click();
+
+    if (exportWithSummary && Object.keys(colorCounts).length > 0) {
+        expCtx.fillStyle = "#111111"; // Dark footer
+        expCtx.fillRect(0, canvas.height, expCanvas.width, footerPadding);
+        
+        let summaryX = 20;
+        let summaryY = canvas.height + footerPadding / 2;
+        expCtx.textAlign = 'left';
+        expCtx.textBaseline = 'middle';
+        expCtx.font = `bold ${currentTextSize}px Arial`;
+        
+        for (const [color, count] of Object.entries(colorCounts)) {
+            const tagName = colorTags[color] || color.toUpperCase();
+            expCtx.fillStyle = color;
+            const text = `${tagName}: ${count}`;
+            expCtx.fillText(text, summaryX, summaryY);
+            summaryX += expCtx.measureText(text + "   ").width;
+        }
+    }
+
+    const link = document.createElement('a');
+    link.download = `${currentFileName}_annotated.jpg`;
+    link.href = expCanvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+
+    // 2. Prepare Log Export
+    if (exportWithLog) {
+        let logText = `Filename: ${currentFileName}\nDate: ${new Date().toLocaleString()}\n\n`;
+        for (const [color, count] of Object.entries(colorCounts)) {
+            const tagName = colorTags[color] || color.toUpperCase();
+            logText += `${tagName}: ${count}\n`;
+        }
+        const blob = new Blob([logText], { type: 'text/plain' });
+        const logLink = document.createElement('a');
+        logLink.download = `${currentFileName}_stats.txt`;
+        logLink.href = URL.createObjectURL(blob);
+        setTimeout(() => logLink.click(), 100); // Small delay to avoid browser blocking multiple downloads
+    }
 });
+
+// Load settings on startup
+loadSettings();
+updateStats();
