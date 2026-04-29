@@ -47,8 +47,11 @@
                     <!-- Dynamic Rows -->
                 </div>
                 <div class="add-color-container">
-                    <button id="add-color-btn" class="primary-btn" style="padding: 8px; font-size: 0.85rem; background-color: #444;">+ Add Custom Color</button>
-                    <input type="color" id="new-color-picker" style="display: none;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="color" id="new-color-picker" value="#ff00ff" style="width: 36px; height: 36px; border: none; padding: 0; background: none; cursor: pointer; flex-shrink: 0;">
+                        <input type="text" id="new-color-hex" value="#ff00ff" style="flex: 1; background: #1a1a1a; color: white; border: 1px solid #444; padding: 6px 8px; border-radius: 4px; font-family: monospace; font-size: 0.85rem; min-width: 0;">
+                        <button id="confirm-add-color-btn" class="primary-btn" style="width: auto; padding: 6px 12px; font-size: 0.85rem; margin-top: 0;">Add</button>
+                    </div>
                 </div>
             </div>
 

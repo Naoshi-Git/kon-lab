@@ -85,17 +85,21 @@ document.getElementById('textsize-slider').addEventListener('input', (e) => {
 document.getElementById('opt-log').addEventListener('change', (e) => { exportWithLog = e.target.checked; saveSettings(); });
 document.getElementById('opt-summary').addEventListener('change', (e) => { exportWithSummary = e.target.checked; saveSettings(); });
 
-document.getElementById('add-color-btn').addEventListener('click', () => {
-    document.getElementById('new-color-picker').click();
-});
+const newColorPicker = document.getElementById('new-color-picker');
+const newColorHex = document.getElementById('new-color-hex');
 
-document.getElementById('new-color-picker').addEventListener('input', (e) => {
-    const newColor = e.target.value;
+newColorPicker.addEventListener('input', (e) => { newColorHex.value = e.target.value.toUpperCase(); });
+newColorHex.addEventListener('input', (e) => { if (/^#[0-9A-F]{6}$/i.test(e.target.value)) newColorPicker.value = e.target.value; });
+
+document.getElementById('confirm-add-color-btn').addEventListener('click', () => {
+    const newColor = newColorPicker.value.toLowerCase();
     if (!palette.find(p => p.color === newColor)) {
         palette.push({ color: newColor, tag: 'New Tag', isDefault: false });
         currentColor = newColor;
         saveSettings();
         updateStats();
+    } else {
+        alert("Color already in palette.");
     }
 });
 
