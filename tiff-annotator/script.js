@@ -9,19 +9,27 @@ const mainView = document.getElementById('main-view');
 let image = null; 
 let currentFileName = 'annotated_image';
 let annotations = []; // { x, y, color }
-let currentColor = '#ff00ff'; // Default to Magenta
+let currentColor = '#ff00ff';
 let currentRadius = 10;
 let currentThickness = 2;
 let currentTextSize = 16;
-let colorTags = {}; // Custom tag texts { '#ff00ff': 'Mitochondria' }
+
+// Palette (Persistent)
+let palette = [
+    { color: '#ff00ff', tag: 'Magenta', isDefault: true },
+    { color: '#00ffff', tag: 'Cyan', isDefault: true },
+    { color: '#00ff00', tag: 'Lime', isDefault: true },
+    { color: '#ccff00', tag: 'Neon Yellow', isDefault: true },
+    { color: '#ff6600', tag: 'Orange', isDefault: true }
+];
 
 // Options (Persistent)
 let exportWithLog = false;
 let exportWithSummary = false;
 
 // LocalStorage Keys
-const STORAGE_TAGS = 'tiff_annotator_tags';
-const STORAGE_OPTS = 'tiff_annotator_options';
+const STORAGE_PALETTE = 'tiff_annotator_palette_v2';
+const STORAGE_OPTS = 'tiff_annotator_options_v2';
 
 // Transform state
 let scale = 1;
@@ -37,8 +45,8 @@ let startPanY = 0;
 
 // Load Settings
 function loadSettings() {
-    const savedTags = localStorage.getItem(STORAGE_TAGS);
-    if (savedTags) colorTags = JSON.parse(savedTags);
+    const savedPalette = localStorage.getItem(STORAGE_PALETTE);
+    if (savedPalette) palette = JSON.parse(savedPalette);
 
     const savedOpts = localStorage.getItem(STORAGE_OPTS);
     if (savedOpts) {
@@ -51,36 +59,11 @@ function loadSettings() {
 }
 
 function saveSettings() {
-    localStorage.setItem(STORAGE_TAGS, JSON.stringify(colorTags));
+    localStorage.setItem(STORAGE_PALETTE, JSON.stringify(palette));
     localStorage.setItem(STORAGE_OPTS, JSON.stringify({ log: exportWithLog, summary: exportWithSummary }));
 }
 
 // Init Event Listeners for UI
-document.querySelectorAll('.color-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('custom-color-btn').classList.remove('active');
-        e.target.classList.add('active');
-        currentColor = e.target.dataset.color;
-    });
-});
-
-const customColorBtn = document.getElementById('custom-color-btn');
-const customColor = document.getElementById('custom-color');
-
-customColorBtn.addEventListener('click', (e) => {
-    if (e.target === customColorBtn) customColor.click();
-    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-    customColorBtn.classList.add('active');
-    currentColor = customColor.value;
-});
-
-customColor.addEventListener('input', (e) => {
-    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-    customColorBtn.classList.add('active');
-    currentColor = e.target.value;
-});
-
 document.getElementById('radius-slider').addEventListener('input', (e) => {
     currentRadius = parseInt(e.target.value);
     document.getElementById('radius-val').innerText = currentRadius;
@@ -101,6 +84,20 @@ document.getElementById('textsize-slider').addEventListener('input', (e) => {
 
 document.getElementById('opt-log').addEventListener('change', (e) => { exportWithLog = e.target.checked; saveSettings(); });
 document.getElementById('opt-summary').addEventListener('change', (e) => { exportWithSummary = e.target.checked; saveSettings(); });
+
+document.getElementById('add-color-btn').addEventListener('click', () => {
+    document.getElementById('new-color-picker').click();
+});
+
+document.getElementById('new-color-picker').addEventListener('input', (e) => {
+    const newColor = e.target.value;
+    if (!palette.find(p => p.color === newColor)) {
+        palette.push({ color: newColor, tag: 'New Tag', isDefault: false });
+        currentColor = newColor;
+        saveSettings();
+        updateStats();
+    }
+});
 
 // File Handling
 window.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -170,7 +167,6 @@ function draw() {
 function drawAnnotations(targetCtx) {
     let counters = {};
     let lastIndices = {};
-    
     annotations.forEach((ann, index) => {
         counters[ann.color] = (counters[ann.color] || 0) + 1;
         lastIndices[ann.color] = index;
@@ -270,47 +266,79 @@ function removeNearest(pos) {
 }
 
 function updateStats() {
+    const total = annotations.length;
     let colorCounts = {};
     annotations.forEach(a => { colorCounts[a.color] = (colorCounts[a.color] || 0) + 1; });
+    
     const container = document.getElementById('stats-container');
     container.innerHTML = '';
     
-    for (const [color, count] of Object.entries(colorCounts)) {
+    palette.forEach(p => {
+        const count = colorCounts[p.color] || 0;
+        const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+        
         const row = document.createElement('div');
-        row.className = 'stat-row';
-        row.style.borderLeftColor = color;
-        const defaultVal = colorTags[color] !== undefined ? colorTags[color] : color.toUpperCase();
+        row.className = `stat-row ${p.color === currentColor ? 'active' : ''}`;
+        row.dataset.color = p.color;
+        
         row.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                <span class="stat-color-indicator" style="background-color: ${color}"></span>
-                <input type="text" class="tag-input" data-color="${color}" value="${defaultVal}" placeholder="Tag name">
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden;">
+                <span class="stat-color-indicator" style="background-color: ${p.color}"></span>
+                <input type="text" class="tag-input" data-color="${p.color}" value="${p.tag}" placeholder="Tag name">
             </div>
-            <strong style="margin-left: 10px;">${count}</strong>
+            <div class="stat-values">
+                <span class="stat-count">${count}</span>
+                <span class="stat-percent">(${percent}%)</span>
+                ${!p.isDefault ? `<button class="delete-color-btn" data-color="${p.color}" title="Remove color">&times;</button>` : ''}
+            </div>
         `;
-        container.appendChild(row);
-    }
-    
-    document.querySelectorAll('.tag-input').forEach(input => {
+        
+        row.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tag-input') || e.target.classList.contains('delete-color-btn')) return;
+            currentColor = p.color;
+            updateStats();
+        });
+        
+        const input = row.querySelector('.tag-input');
         input.addEventListener('input', (e) => {
-            colorTags[e.target.dataset.color] = e.target.value;
+            p.tag = e.target.value;
             saveSettings();
         });
+
+        const delBtn = row.querySelector('.delete-color-btn');
+        if (delBtn) {
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                palette = palette.filter(item => item.color !== p.color);
+                annotations = annotations.filter(a => a.color !== p.color);
+                if (currentColor === p.color) currentColor = palette[0].color;
+                saveSettings();
+                updateStats();
+                draw();
+            });
+        }
+        
+        container.appendChild(row);
     });
     
-    if (annotations.length === 0) container.innerHTML = '<div style="color: #666; font-style: italic;">No annotations</div>';
+    if (palette.length === 0) container.innerHTML = '<div style="color: #666; font-style: italic;">No colors in palette</div>';
 }
 
 document.getElementById('export-btn').addEventListener('click', () => {
     if (!image) { alert("Please load an image first."); return; }
     
+    const total = annotations.length;
     let colorCounts = {};
     annotations.forEach(a => { colorCounts[a.color] = (colorCounts[a.color] || 0) + 1; });
 
-    // 1. Prepare Image Export
+    // Filter palette for non-zero counts for log/overlay
+    const activePalette = palette.filter(p => (colorCounts[p.color] || 0) > 0);
+
+    // 1. Image Export
     const expCanvas = document.createElement('canvas');
     let finalHeight = canvas.height;
     const footerPadding = currentTextSize * 2.5;
-    if (exportWithSummary && Object.keys(colorCounts).length > 0) {
+    if (exportWithSummary && activePalette.length > 0) {
         finalHeight += footerPadding;
     }
     expCanvas.width = canvas.width;
@@ -322,8 +350,8 @@ document.getElementById('export-btn').addEventListener('click', () => {
     expCtx.drawImage(image, 0, 0);
     drawAnnotations(expCtx);
 
-    if (exportWithSummary && Object.keys(colorCounts).length > 0) {
-        expCtx.fillStyle = "#111111"; // Dark footer
+    if (exportWithSummary && activePalette.length > 0) {
+        expCtx.fillStyle = "#111111"; 
         expCtx.fillRect(0, canvas.height, expCanvas.width, footerPadding);
         
         let summaryX = 20;
@@ -332,13 +360,14 @@ document.getElementById('export-btn').addEventListener('click', () => {
         expCtx.textBaseline = 'middle';
         expCtx.font = `bold ${currentTextSize}px Arial`;
         
-        for (const [color, count] of Object.entries(colorCounts)) {
-            const tagName = colorTags[color] || color.toUpperCase();
-            expCtx.fillStyle = color;
-            const text = `${tagName}: ${count}`;
+        activePalette.forEach(p => {
+            const count = colorCounts[p.color];
+            const percent = Math.round((count / total) * 100);
+            expCtx.fillStyle = p.color;
+            const text = `${p.tag}: ${count} (${percent}%)`;
             expCtx.fillText(text, summaryX, summaryY);
             summaryX += expCtx.measureText(text + "   ").width;
-        }
+        });
     }
 
     const link = document.createElement('a');
@@ -346,21 +375,21 @@ document.getElementById('export-btn').addEventListener('click', () => {
     link.href = expCanvas.toDataURL('image/jpeg', 0.95);
     link.click();
 
-    // 2. Prepare Log Export
+    // 2. Log Export
     if (exportWithLog) {
-        let logText = `Filename: ${currentFileName}\nDate: ${new Date().toLocaleString()}\n\n`;
-        for (const [color, count] of Object.entries(colorCounts)) {
-            const tagName = colorTags[color] || color.toUpperCase();
-            logText += `${tagName}: ${count}\n`;
-        }
+        let logText = `Filename: ${currentFileName}\nDate: ${new Date().toLocaleString()}\nTotal: ${total}\n\n`;
+        activePalette.forEach(p => {
+            const count = colorCounts[p.color];
+            const percent = Math.round((count / total) * 100);
+            logText += `${p.tag}: ${count} (${percent}%)\n`;
+        });
         const blob = new Blob([logText], { type: 'text/plain' });
         const logLink = document.createElement('a');
         logLink.download = `${currentFileName}_stats.txt`;
         logLink.href = URL.createObjectURL(blob);
-        setTimeout(() => logLink.click(), 100); // Small delay to avoid browser blocking multiple downloads
+        setTimeout(() => logLink.click(), 100);
     }
 });
 
-// Load settings on startup
 loadSettings();
 updateStats();
