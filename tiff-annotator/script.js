@@ -3,9 +3,11 @@ const fileInput = document.getElementById('file-input');
 const canvas = document.getElementById('main-canvas');
 const ctx = canvas.getContext('2d');
 const container = document.getElementById('canvas-container');
+const mainView = document.getElementById('main-view');
 
 // State
 let image = null; 
+let currentFileName = 'annotated_image';
 let annotations = []; // { x, y, color }
 let currentColor = '#ff0000';
 let currentRadius = 10;
@@ -82,6 +84,7 @@ fileInput.addEventListener('change', (e) => {
 });
 
 function handleFile(file) {
+    currentFileName = file.name.replace(/\.[^/.]+$/, "");
     const reader = new FileReader();
     reader.onload = function(event) {
         const buffer = event.target.result;
@@ -286,6 +289,6 @@ document.getElementById('export-btn').addEventListener('click', () => {
     expCtx.fillStyle = "#ffffff"; expCtx.fillRect(0, 0, expCanvas.width, expCanvas.height);
     expCtx.drawImage(image, 0, 0);
     drawAnnotations(expCtx);
-    const link = document.createElement('a'); link.download = 'annotated_image.jpg';
+    const link = document.createElement('a'); link.download = `${currentFileName}_annotated.jpg`;
     link.href = expCanvas.toDataURL('image/jpeg', 0.95); link.click();
 });
