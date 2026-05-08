@@ -13,6 +13,7 @@ let currentColor = '#ff00ff';
 let currentRadius = 10;
 let currentThickness = 2;
 let currentTextSize = 16;
+let showCircleLabels = true;
 
 // Palette (Persistent)
 let palette = [
@@ -53,14 +54,21 @@ function loadSettings() {
         const opts = JSON.parse(savedOpts);
         exportWithLog = !!opts.log;
         exportWithSummary = !!opts.summary;
+        showCircleLabels = opts.showLabels !== undefined ? !!opts.showLabels : true;
+        
         document.getElementById('opt-log').checked = exportWithLog;
         document.getElementById('opt-summary').checked = exportWithSummary;
+        document.getElementById('opt-show-labels').checked = showCircleLabels;
     }
 }
 
 function saveSettings() {
     localStorage.setItem(STORAGE_PALETTE, JSON.stringify(palette));
-    localStorage.setItem(STORAGE_OPTS, JSON.stringify({ log: exportWithLog, summary: exportWithSummary }));
+    localStorage.setItem(STORAGE_OPTS, JSON.stringify({ 
+        log: exportWithLog, 
+        summary: exportWithSummary,
+        showLabels: showCircleLabels
+    }));
 }
 
 // Init Event Listeners for UI
@@ -84,6 +92,7 @@ document.getElementById('textsize-slider').addEventListener('input', (e) => {
 
 document.getElementById('opt-log').addEventListener('change', (e) => { exportWithLog = e.target.checked; saveSettings(); });
 document.getElementById('opt-summary').addEventListener('change', (e) => { exportWithSummary = e.target.checked; saveSettings(); });
+document.getElementById('opt-show-labels').addEventListener('change', (e) => { showCircleLabels = e.target.checked; saveSettings(); draw(); });
 
 const newColorPicker = document.getElementById('new-color-picker');
 const newColorHex = document.getElementById('new-color-hex');
@@ -184,7 +193,7 @@ function drawAnnotations(targetCtx) {
         targetCtx.globalAlpha = 1.0;
         targetCtx.stroke();
         
-        if (index === lastIndices[ann.color]) {
+        if (showCircleLabels && index === lastIndices[ann.color]) {
             const num = counters[ann.color];
             targetCtx.fillStyle = ann.color;
             targetCtx.font = `bold ${currentTextSize}px Arial`;
