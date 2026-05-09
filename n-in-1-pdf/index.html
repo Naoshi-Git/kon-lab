@@ -60,6 +60,7 @@
                 <div class="setting-row">
                     <span>N-in-1</span>
                     <select id="n-value">
+                        <option value="1">1-in-1</option>
                         <option value="2">2-in-1</option>
                         <option value="4" selected>4-in-1</option>
                         <option value="6">6-in-1</option>
@@ -93,7 +94,31 @@
             </div>
 
             <div class="control-group">
-                <label>3. プリセット</label>
+                <label>3. 余白・枠線設定</label>
+                <div class="setting-row" style="align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <span>とじ代(マチ)</span>
+                        <span title="両面印刷用に長辺に対して左右(または上下)交互に余白を作ります" style="cursor:help; color:var(--primary); font-size:12px;">(?)</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <input type="number" id="margin-input" value="10" min="0" max="50" style="width: 60px; text-align: right;">
+                        <span>mm</span>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <span>区切り線</span>
+                    <select id="divider-select">
+                        <option value="none">なし</option>
+                        <option value="inner">内側のみ罫線</option>
+                        <option value="all">全罫線</option>
+                        <option value="vertical">縦区切りのみ</option>
+                        <option value="horizontal">横区切りのみ</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>4. プリセット</label>
                 <div class="setting-row">
                     <select id="preset-select" style="flex: 1;">
                         <option value="">-- 保存済みの設定 --</option>
@@ -107,7 +132,7 @@
             </div>
 
             <div class="control-group" id="deleted-pages-group" style="display: none;">
-                <label>4. 除外されたページ</label>
+                <label>5. 除外されたページ</label>
                 <div id="deleted-pages-list" class="deleted-list">
                     <!-- Deleted pages shown here -->
                 </div>

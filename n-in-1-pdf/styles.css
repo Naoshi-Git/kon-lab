@@ -359,3 +359,26 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
     text-shadow: 0 0 6px rgba(255,255,255,0.7);
     font-family: sans-serif;
 }
+
+/* Margin Highlights */
+.binding-margin {
+    position: absolute;
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(168, 199, 250, 0.15),
+        rgba(168, 199, 250, 0.15) 10px,
+        rgba(168, 199, 250, 0.3) 10px,
+        rgba(168, 199, 250, 0.3) 20px
+    );
+    z-index: 3;
+    pointer-events: none;
+}
+.margin-left { top: 0; bottom: 0; left: 0; border-right: 1px dashed var(--primary); }
+.margin-right { top: 0; bottom: 0; right: 0; border-left: 1px dashed var(--primary); }
+.margin-top { top: 0; left: 0; right: 0; border-bottom: 1px dashed var(--primary); }
+.margin-bottom { bottom: 0; left: 0; right: 0; border-top: 1px dashed var(--primary); }
+
+/* Dividers */
+.slot.divider-right { border-right: 1px solid var(--panel-border); }
+.slot.divider-bottom { border-bottom: 1px solid var(--panel-border); }
+

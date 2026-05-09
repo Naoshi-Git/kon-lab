@@ -11,6 +11,8 @@ let nValue = 4;
 let orientation = 'Portrait';
 let globalScale = 1.0;
 let layoutDirection = 'row';
+let marginMm = 10;
+let dividerMode = 'none';
 let pageCache = {}; // index -> Object URL (JPEG Blob)
 
 // DOM Elements
@@ -45,6 +47,8 @@ const presetSelect = document.getElementById('preset-select');
 const presetNameInput = document.getElementById('preset-name');
 const btnSavePreset = document.getElementById('btn-save-preset');
 const btnDeletePreset = document.getElementById('btn-delete-preset');
+const marginInput = document.getElementById('margin-input');
+const dividerSelect = document.getElementById('divider-select');
 
 let uiZoom = 1.0;
 
@@ -53,6 +57,7 @@ const getGridConfig = (n, ori) => {
     n = parseInt(n);
     if (ori === 'Portrait') {
         switch(n) {
+            case 1: return { cols: 1, rows: 1 };
             case 2: return { cols: 1, rows: 2 };
             case 4: return { cols: 2, rows: 2 };
             case 6: return { cols: 2, rows: 3 };
@@ -63,6 +68,7 @@ const getGridConfig = (n, ori) => {
         }
     } else {
         switch(n) {
+            case 1: return { cols: 1, rows: 1 };
             case 2: return { cols: 2, rows: 1 };
             case 4: return { cols: 2, rows: 2 };
             case 6: return { cols: 3, rows: 2 };
@@ -145,6 +151,8 @@ function init() {
     nValueSelect.addEventListener('change', (e) => { nValue = parseInt(e.target.value); renderLayout(); });
     orientationSelect.addEventListener('change', (e) => { orientation = e.target.value; renderLayout(); });
     layoutDirectionSelect.addEventListener('change', (e) => { layoutDirection = e.target.value; renderLayout(); });
+    marginInput.addEventListener('change', (e) => { marginMm = parseInt(e.target.value) || 0; renderLayout(); });
+    dividerSelect.addEventListener('change', (e) => { dividerMode = e.target.value; renderLayout(); });
     
     // Presets
     loadPresets();
@@ -201,7 +209,7 @@ function loadPresets() {
     let presets = JSON.parse(localStorage.getItem('nIn1Presets')) || {};
     
     if (Object.keys(presets).length === 0) {
-        presets['デフォルト'] = { nValue: 4, orientation: 'Portrait', layoutDirection: 'row', globalScale: 1.0 };
+        presets['デフォルト'] = { nValue: 4, orientation: 'Portrait', layoutDirection: 'row', globalScale: 1.0, marginMm: 10, dividerMode: 'none' };
         localStorage.setItem('nIn1Presets', JSON.stringify(presets));
     }
     
@@ -222,10 +230,14 @@ function applyPreset(name) {
         orientation = preset.orientation || 'Portrait';
         layoutDirection = preset.layoutDirection || 'row';
         globalScale = preset.globalScale || 1.0;
+        marginMm = preset.marginMm !== undefined ? preset.marginMm : 10;
+        dividerMode = preset.dividerMode || 'none';
         
         nValueSelect.value = nValue;
         orientationSelect.value = orientation;
         layoutDirectionSelect.value = layoutDirection;
+        marginInput.value = marginMm;
+        dividerSelect.value = dividerMode;
         zoomScaleSlider.value = globalScale;
         zoomScaleInput.value = globalScale.toFixed(2);
         
@@ -240,7 +252,9 @@ function savePreset(name) {
         nValue: nValue,
         orientation: orientation,
         layoutDirection: layoutDirection,
-        globalScale: globalScale
+        globalScale: globalScale,
+        marginMm: marginMm,
+        dividerMode: dividerMode
     };
     localStorage.setItem('nIn1Presets', JSON.stringify(presets));
     loadPresets();
@@ -386,6 +400,44 @@ async function renderLayout() {
         sheetEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
         sheetEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
         sheetEl.style.gridAutoFlow = layoutDirection;
+        sheetEl.style.boxSizing = 'border-box';
+        sheetEl.style.position = 'relative';
+
+        let padLeft = 0, padRight = 0, padTop = 0, padBottom = 0;
+        
+        if (marginMm > 0) {
+            const physicalW = orientation === 'Portrait' ? 210 : 297;
+            const pxPerMm = sheetVisualWidth / physicalW;
+            const marginPx = marginMm * pxPerMm;
+
+            const marginDiv = document.createElement('div');
+            marginDiv.className = 'binding-margin';
+            
+            if (orientation === 'Portrait') {
+                if (s % 2 === 0) {
+                    padLeft = marginPx;
+                    marginDiv.classList.add('margin-left');
+                    marginDiv.style.width = `${marginPx}px`;
+                } else {
+                    padRight = marginPx;
+                    marginDiv.classList.add('margin-right');
+                    marginDiv.style.width = `${marginPx}px`;
+                }
+            } else {
+                if (s % 2 === 0) {
+                    padTop = marginPx;
+                    marginDiv.classList.add('margin-top');
+                    marginDiv.style.height = `${marginPx}px`;
+                } else {
+                    padBottom = marginPx;
+                    marginDiv.classList.add('margin-bottom');
+                    marginDiv.style.height = `${marginPx}px`;
+                }
+            }
+            sheetEl.appendChild(marginDiv);
+        }
+
+        sheetEl.style.padding = `${padTop}px ${padRight}px ${padBottom}px ${padLeft}px`;
 
         for (let i = 0; i < slotsPerSheet; i++) {
             const mapIndex = s * slotsPerSheet + i;
@@ -393,6 +445,30 @@ async function renderLayout() {
 
             const slotEl = document.createElement('div');
             slotEl.className = 'slot';
+
+            // Divider UI
+            if (dividerMode !== 'none') {
+                let col, row;
+                if (layoutDirection === 'column') {
+                    col = Math.floor(i / rows);
+                    row = i % rows;
+                } else {
+                    col = i % cols;
+                    row = Math.floor(i / cols);
+                }
+
+                const drawV = (dividerMode === 'all' || dividerMode === 'vertical' || dividerMode === 'inner');
+                const drawH = (dividerMode === 'all' || dividerMode === 'horizontal' || dividerMode === 'inner');
+                const isLastCol = (col === cols - 1);
+                const isLastRow = (row === rows - 1);
+
+                if (drawV && !(dividerMode === 'inner' && isLastCol)) {
+                    slotEl.classList.add('divider-right');
+                }
+                if (drawH && !(dividerMode === 'inner' && isLastRow)) {
+                    slotEl.classList.add('divider-bottom');
+                }
+            }
 
             const overlayEl = document.createElement('div');
             overlayEl.className = 'slot-overlay';
@@ -500,8 +576,18 @@ async function createFinalPdfBlob() {
     const PAGE_HEIGHT = orientation === 'Portrait' ? Math.max(A4_W, A4_H) : Math.min(A4_W, A4_H);
 
     const { cols, rows } = getGridConfig(nValue, orientation);
-    const cellW = PAGE_WIDTH / cols;
-    const cellH = PAGE_HEIGHT / rows;
+    
+    const marginPt = marginMm * 2.83465;
+    let printableW = PAGE_WIDTH;
+    let printableH = PAGE_HEIGHT;
+    
+    if (marginMm > 0) {
+        if (orientation === 'Portrait') printableW -= marginPt;
+        else printableH -= marginPt;
+    }
+    
+    const cellW = printableW / cols;
+    const cellH = printableH / rows;
 
     const pageIndicesNeeded = new Set();
     pageMapping.forEach(item => {
@@ -551,6 +637,48 @@ async function createFinalPdfBlob() {
         
         if (indexInSheet === 0) {
             currentSheet = finalDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+            
+            // Draw Dividers
+            if (dividerMode !== 'none') {
+                const sheetIdx = Math.floor(i / (cols * rows));
+                let gridOriginX = 0;
+                let gridOriginY = 0;
+                
+                if (orientation === 'Portrait') {
+                    if (sheetIdx % 2 === 0) gridOriginX = marginPt;
+                } else {
+                    if (sheetIdx % 2 !== 0) gridOriginY = marginPt;
+                }
+
+                const color = window.PDFLib.rgb(0.5, 0.5, 0.5);
+                const thickness = 0.5;
+                const drawV = (dividerMode === 'all' || dividerMode === 'vertical' || dividerMode === 'inner');
+                const drawH = (dividerMode === 'all' || dividerMode === 'horizontal' || dividerMode === 'inner');
+                
+                if (drawV) {
+                    for (let c = 0; c <= cols; c++) {
+                        if (dividerMode === 'inner' && (c === 0 || c === cols)) continue;
+                        const lx = gridOriginX + c * cellW;
+                        currentSheet.drawLine({
+                            start: { x: lx, y: gridOriginY },
+                            end: { x: lx, y: gridOriginY + printableH },
+                            thickness, color
+                        });
+                    }
+                }
+                
+                if (drawH) {
+                    for (let r = 0; r <= rows; r++) {
+                        if (dividerMode === 'inner' && (r === 0 || r === rows)) continue;
+                        const ly = gridOriginY + r * cellH;
+                        currentSheet.drawLine({
+                            start: { x: gridOriginX, y: ly },
+                            end: { x: gridOriginX + printableW, y: ly },
+                            thickness, color
+                        });
+                    }
+                }
+            }
         }
 
         if (item.type === 'page') {
@@ -565,8 +693,18 @@ async function createFinalPdfBlob() {
                 row = Math.floor(indexInSheet / cols);
             }
             
-            const x = col * cellW;
-            const y = PAGE_HEIGHT - (row + 1) * cellH; 
+            const sheetIdx = Math.floor(i / (cols * rows));
+            let gridOriginX = 0;
+            let gridOriginY = 0;
+            
+            if (orientation === 'Portrait') {
+                if (sheetIdx % 2 === 0) gridOriginX = marginPt;
+            } else {
+                if (sheetIdx % 2 !== 0) gridOriginY = marginPt;
+            }
+            
+            const x = gridOriginX + col * cellW;
+            const y = gridOriginY + printableH - (row + 1) * cellH; 
 
             // トリミング済みのページを、スロットのサイズ(cellW x cellH)でそのまま描画
             currentSheet.drawPage(embeddedPage, { x: x, y: y, width: cellW, height: cellH });
