@@ -6,6 +6,10 @@ const container = document.getElementById('canvas-container');
 const mainView = document.getElementById('main-view');
 
 // State
+let isMultiMode = false;
+let loadedFiles = []; // { name, image, annotations: [], url }
+let activeFileIndex = -1;
+
 let image = null; 
 let currentFileName = 'annotated_image';
 let annotations = []; // { x, y, color }
@@ -31,6 +35,7 @@ let exportWithSummary = false;
 // LocalStorage Keys
 const STORAGE_PALETTE = 'tiff_annotator_palette_v2';
 const STORAGE_OPTS = 'tiff_annotator_options_v2';
+const STORAGE_MULTI_MODE = 'tiff_annotator_multi_mode';
 
 // Transform state
 let scale = 1;
@@ -60,6 +65,12 @@ function loadSettings() {
         document.getElementById('opt-summary').checked = exportWithSummary;
         document.getElementById('opt-show-labels').checked = showCircleLabels;
     }
+
+    const savedMulti = localStorage.getItem(STORAGE_MULTI_MODE);
+    if (savedMulti !== null) {
+        isMultiMode = savedMulti === 'true';
+        document.getElementById('opt-multi-mode').checked = isMultiMode;
+    }
 }
 
 function saveSettings() {
@@ -69,6 +80,63 @@ function saveSettings() {
         summary: exportWithSummary,
         showLabels: showCircleLabels
     }));
+    localStorage.setItem(STORAGE_MULTI_MODE, isMultiMode.toString());
+}
+
+// Toggle Mode UI Elements
+function toggleMultiModeUI() {
+    const loadedImagesPanel = document.getElementById('loaded-images-panel');
+    const multiTableContainer = document.getElementById('multi-stats-table-container');
+    const exportAllBtn = document.getElementById('export-all-btn');
+    
+    if (isMultiMode) {
+        loadedImagesPanel.style.display = 'block';
+        multiTableContainer.style.display = 'block';
+        exportAllBtn.style.display = 'block';
+        if (loadedFiles.length > 0) {
+            if (activeFileIndex === -1) activeFileIndex = 0;
+            switchActiveFile(activeFileIndex);
+        } else {
+            image = null;
+            annotations = [];
+            currentFileName = 'annotated_image';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            updateStats();
+        }
+    } else {
+        loadedImagesPanel.style.display = 'none';
+        multiTableContainer.style.display = 'none';
+        exportAllBtn.style.display = 'none';
+        
+        if (loadedFiles.length > 0) {
+            const idx = activeFileIndex >= 0 ? activeFileIndex : 0;
+            const activeFile = loadedFiles[idx];
+            image = activeFile.image;
+            currentFileName = activeFile.name;
+            annotations = activeFile.annotations || [];
+            
+            if (image) {
+                canvas.width = image.width;
+                canvas.height = image.height;
+                resetViewDimensions();
+                draw();
+            }
+        }
+        updateStats();
+    }
+    updateFileList();
+}
+
+function resetViewDimensions() {
+    if (!image) return;
+    const viewRect = mainView.getBoundingClientRect();
+    const scaleX = viewRect.width / image.width;
+    const scaleY = viewRect.height / image.height;
+    scale = Math.min(scaleX, scaleY) * 0.9;
+    if (scale > 1) scale = 1;
+    panX = (viewRect.width - image.width * scale) / 2;
+    panY = (viewRect.height - image.height * scale) / 2;
+    updateTransform();
 }
 
 // Init Event Listeners for UI
@@ -93,6 +161,11 @@ document.getElementById('textsize-slider').addEventListener('input', (e) => {
 document.getElementById('opt-log').addEventListener('change', (e) => { exportWithLog = e.target.checked; saveSettings(); });
 document.getElementById('opt-summary').addEventListener('change', (e) => { exportWithSummary = e.target.checked; saveSettings(); });
 document.getElementById('opt-show-labels').addEventListener('change', (e) => { showCircleLabels = e.target.checked; saveSettings(); draw(); });
+document.getElementById('opt-multi-mode').addEventListener('change', (e) => {
+    isMultiMode = e.target.checked;
+    saveSettings();
+    toggleMultiModeUI();
+});
 
 const newColorPicker = document.getElementById('new-color-picker');
 const newColorHex = document.getElementById('new-color-hex');
@@ -117,75 +190,164 @@ window.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classL
 window.addEventListener('dragleave', (e) => { if (e.target === document.body || e.target === dropZone) dropZone.classList.remove('dragover'); });
 window.addEventListener('drop', (e) => {
     e.preventDefault(); dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
 });
 fileInput.addEventListener('change', (e) => {
-    if (e.target.files.length) handleFile(e.target.files[0]);
+    if (e.target.files.length) handleFiles(e.target.files);
 });
 
-function handleFile(file) {
-    currentFileName = file.name.replace(/\.[^/.]+$/, "");
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        const buffer = event.target.result;
-        if (file.name.toLowerCase().endsWith('.tif') || file.name.toLowerCase().endsWith('.tiff')) {
-            try {
-                const ifds = UTIF.decode(buffer);
-                UTIF.decodeImage(buffer, ifds[0]);
-                const tiff = ifds[0];
-                const rgba = UTIF.toRGBA8(tiff);
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = tiff.width; tempCanvas.height = tiff.height;
-                const tempCtx = tempCanvas.getContext('2d');
-                const imgData = tempCtx.createImageData(tiff.width, tiff.height);
-                imgData.data.set(rgba); tempCtx.putImageData(imgData, 0, 0);
-                loadImageFromUrl(tempCanvas.toDataURL());
-            } catch (err) { console.error(err); alert("Failed to parse TIFF file."); }
-        } else {
-            const blob = new Blob([buffer], { type: file.type });
-            loadImageFromUrl(URL.createObjectURL(blob));
+async function handleFiles(files) {
+    if (files.length === 0) return;
+    
+    if (!isMultiMode) {
+        // Single Image Mode: Process first file only
+        await processSingleFile(files[0]);
+    } else {
+        // Multi Image Mode: Process all files
+        for (let i = 0; i < files.length; i++) {
+            await processFileIntoList(files[i]);
         }
-    };
-    reader.readAsArrayBuffer(file);
+        if (loadedFiles.length > 0 && activeFileIndex === -1) {
+            switchActiveFile(0);
+        } else {
+            updateFileList();
+            updateStats();
+        }
+    }
 }
 
-function loadImageFromUrl(url) {
+function decodeTiff(buffer) {
+    const ifds = UTIF.decode(buffer);
+    UTIF.decodeImage(buffer, ifds[0]);
+    const tiff = ifds[0];
+    const rgba = UTIF.toRGBA8(tiff);
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = tiff.width; tempCanvas.height = tiff.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    const imgData = tempCtx.createImageData(tiff.width, tiff.height);
+    imgData.data.set(rgba); tempCtx.putImageData(imgData, 0, 0);
+    return { url: tempCanvas.toDataURL(), width: tiff.width, height: tiff.height };
+}
+
+function processSingleFile(file) {
+    return new Promise((resolve) => {
+        currentFileName = file.name.replace(/\.[^/.]+$/, "");
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const buffer = event.target.result;
+            if (file.name.toLowerCase().endsWith('.tif') || file.name.toLowerCase().endsWith('.tiff')) {
+                try {
+                    const result = decodeTiff(buffer);
+                    loadImageFromUrl(result.url, () => {
+                        loadedFiles = [{
+                            name: currentFileName,
+                            image: image,
+                            annotations: [],
+                            url: result.url
+                        }];
+                        activeFileIndex = 0;
+                        resolve();
+                    });
+                } catch (err) { console.error(err); alert("Failed to parse TIFF file."); resolve(); }
+            } else {
+                const blob = new Blob([buffer], { type: file.type });
+                const url = URL.createObjectURL(blob);
+                loadImageFromUrl(url, () => {
+                    loadedFiles = [{
+                        name: currentFileName,
+                        image: image,
+                        annotations: [],
+                        url: url
+                    }];
+                    activeFileIndex = 0;
+                    resolve();
+                });
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+function processFileIntoList(file) {
+    return new Promise((resolve) => {
+        const name = file.name.replace(/\.[^/.]+$/, "");
+        // Check for duplicates
+        if (loadedFiles.some(f => f.name === name)) {
+            resolve();
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const buffer = event.target.result;
+            if (file.name.toLowerCase().endsWith('.tif') || file.name.toLowerCase().endsWith('.tiff')) {
+                try {
+                    const result = decodeTiff(buffer);
+                    const img = new Image();
+                    img.onload = () => {
+                        loadedFiles.push({
+                            name: name,
+                            image: img,
+                            annotations: [],
+                            url: result.url
+                        });
+                        resolve();
+                    };
+                    img.src = result.url;
+                } catch (err) { console.error(err); alert(`Failed to parse TIFF: ${file.name}`); resolve(); }
+            } else {
+                const blob = new Blob([buffer], { type: file.type });
+                const url = URL.createObjectURL(blob);
+                const img = new Image();
+                img.onload = () => {
+                    loadedFiles.push({
+                        name: name,
+                        image: img,
+                        annotations: [],
+                        url: url
+                    });
+                    resolve();
+                };
+                img.src = url;
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+function loadImageFromUrl(url, callback) {
     const img = new Image();
-    img.onload = () => { image = img; resetView(); };
+    img.onload = () => { 
+        image = img; 
+        resetView(); 
+        if (callback) callback();
+    };
     img.src = url;
 }
 
 function resetView() {
     if (!image) return;
     canvas.width = image.width; canvas.height = image.height;
-    const viewEl = document.getElementById('main-view');
-    const viewRect = viewEl.getBoundingClientRect();
-    const scaleX = viewRect.width / image.width;
-    const scaleY = viewRect.height / image.height;
-    scale = Math.min(scaleX, scaleY) * 0.9;
-    if (scale > 1) scale = 1;
-    panX = (viewRect.width - image.width * scale) / 2;
-    panY = (viewRect.height - image.height * scale) / 2;
+    resetViewDimensions();
     annotations = []; 
-    updateStats(); updateTransform(); draw();
+    updateStats(); draw();
 }
 
 function draw() {
     if (!image) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(image, 0, 0);
-    drawAnnotations(ctx);
+    drawAnnotations(ctx, annotations);
 }
 
-function drawAnnotations(targetCtx) {
+function drawAnnotations(targetCtx, targetAnns) {
     let counters = {};
     let lastIndices = {};
-    annotations.forEach((ann, index) => {
+    targetAnns.forEach((ann, index) => {
         counters[ann.color] = (counters[ann.color] || 0) + 1;
         lastIndices[ann.color] = index;
     });
 
-    annotations.forEach((ann, index) => {
+    targetAnns.forEach((ann, index) => {
         targetCtx.beginPath();
         targetCtx.arc(ann.x, ann.y, currentRadius, 0, 2 * Math.PI);
         targetCtx.lineWidth = currentThickness;
@@ -216,6 +378,83 @@ function updateTransform() {
 function getMousePos(e) {
     const rect = canvas.getBoundingClientRect();
     return { x: (e.clientX - rect.left) / scale, y: (e.clientY - rect.top) / scale };
+}
+
+// Multi-Image View Operations
+function updateFileList() {
+    const fileContainer = document.getElementById('file-list-container');
+    const countSpan = document.getElementById('image-count');
+    fileContainer.innerHTML = '';
+    countSpan.innerText = loadedFiles.length;
+    
+    loadedFiles.forEach((file, index) => {
+        const item = document.createElement('div');
+        item.className = `file-item ${index === activeFileIndex ? 'active' : ''}`;
+        item.innerHTML = `
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;" title="${file.name}">${file.name}</span>
+            <button class="file-item-remove" data-index="${index}" title="Remove file">&times;</button>
+        `;
+        
+        item.addEventListener('click', (e) => {
+            if (e.target.classList.contains('file-item-remove')) return;
+            switchActiveFile(index);
+        });
+        
+        const removeBtn = item.querySelector('.file-item-remove');
+        removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeFile(index);
+        });
+        
+        fileContainer.appendChild(item);
+    });
+}
+
+function switchActiveFile(index) {
+    if (index < 0 || index >= loadedFiles.length) return;
+    
+    if (activeFileIndex >= 0 && activeFileIndex < loadedFiles.length) {
+        loadedFiles[activeFileIndex].annotations = annotations;
+    }
+    
+    activeFileIndex = index;
+    const file = loadedFiles[index];
+    image = file.image;
+    currentFileName = file.name;
+    annotations = file.annotations || [];
+    
+    if (image) {
+        canvas.width = image.width;
+        canvas.height = image.height;
+        resetViewDimensions();
+        draw();
+    }
+    
+    updateFileList();
+    updateStats();
+}
+
+function removeFile(index) {
+    loadedFiles.splice(index, 1);
+    
+    if (loadedFiles.length === 0) {
+        activeFileIndex = -1;
+        image = null;
+        annotations = [];
+        currentFileName = 'annotated_image';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    } else {
+        if (activeFileIndex === index) {
+            const newIndex = Math.min(index, loadedFiles.length - 1);
+            activeFileIndex = -1;
+            switchActiveFile(newIndex);
+        } else if (activeFileIndex > index) {
+            activeFileIndex--;
+        }
+    }
+    
+    updateFileList();
+    updateStats();
 }
 
 canvas.addEventListener('mousedown', (e) => {
@@ -279,9 +518,24 @@ function removeNearest(pos) {
 }
 
 function updateStats() {
-    const total = annotations.length;
+    if (isMultiMode && activeFileIndex >= 0 && activeFileIndex < loadedFiles.length) {
+        loadedFiles[activeFileIndex].annotations = annotations;
+    }
+
+    let total = 0;
     let colorCounts = {};
-    annotations.forEach(a => { colorCounts[a.color] = (colorCounts[a.color] || 0) + 1; });
+    
+    if (!isMultiMode) {
+        total = annotations.length;
+        annotations.forEach(a => { colorCounts[a.color] = (colorCounts[a.color] || 0) + 1; });
+    } else {
+        loadedFiles.forEach(f => {
+            total += f.annotations.length;
+            f.annotations.forEach(a => {
+                colorCounts[a.color] = (colorCounts[a.color] || 0) + 1;
+            });
+        });
+    }
     
     const container = document.getElementById('stats-container');
     container.innerHTML = '';
@@ -316,6 +570,7 @@ function updateStats() {
         input.addEventListener('input', (e) => {
             p.tag = e.target.value;
             saveSettings();
+            if (isMultiMode) renderStatsBreakdownTable();
         });
 
         const delBtn = row.querySelector('.delete-color-btn');
@@ -323,7 +578,16 @@ function updateStats() {
             delBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 palette = palette.filter(item => item.color !== p.color);
-                annotations = annotations.filter(a => a.color !== p.color);
+                if (isMultiMode) {
+                    loadedFiles.forEach(f => {
+                        f.annotations = f.annotations.filter(a => a.color !== p.color);
+                    });
+                    if (activeFileIndex >= 0) {
+                        annotations = loadedFiles[activeFileIndex].annotations;
+                    }
+                } else {
+                    annotations = annotations.filter(a => a.color !== p.color);
+                }
                 if (currentColor === p.color) currentColor = palette[0].color;
                 saveSettings();
                 updateStats();
@@ -335,74 +599,286 @@ function updateStats() {
     });
     
     if (palette.length === 0) container.innerHTML = '<div style="color: #666; font-style: italic;">No colors in palette</div>';
+
+    // Toggle Breakdown Table
+    const multiTableContainer = document.getElementById('multi-stats-table-container');
+    if (isMultiMode && loadedFiles.length > 0) {
+        multiTableContainer.style.display = 'block';
+        renderStatsBreakdownTable();
+    } else {
+        multiTableContainer.style.display = 'none';
+    }
 }
 
-document.getElementById('export-btn').addEventListener('click', () => {
+function renderStatsBreakdownTable() {
+    const tableHead = document.querySelector('#stats-table thead');
+    const tableBody = document.querySelector('#stats-table tbody');
+    tableHead.innerHTML = '';
+    tableBody.innerHTML = '';
+    
+    // Header
+    const headerRow = document.createElement('tr');
+    headerRow.innerHTML = `<th style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">File</th>`;
+    palette.forEach(p => {
+        headerRow.innerHTML += `<th style="text-align: center; color: ${p.color};" title="${p.tag}">${p.tag.substring(0, 5)}</th>`;
+    });
+    headerRow.innerHTML += `<th style="text-align: right; font-weight: bold;">Total</th>`;
+    tableHead.appendChild(headerRow);
+    
+    // Rows
+    loadedFiles.forEach(f => {
+        let fileCounts = {};
+        f.annotations.forEach(a => { fileCounts[a.color] = (fileCounts[a.color] || 0) + 1; });
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `<td style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ccc;" title="${f.name}">${f.name}</td>`;
+        
+        palette.forEach(p => {
+            const count = fileCounts[p.color] || 0;
+            row.innerHTML += `<td style="text-align: center; color: ${count > 0 ? '#fff' : '#666'};">${count}</td>`;
+        });
+        row.innerHTML += `<td style="text-align: right; font-weight: bold; color: #fff;">${f.annotations.length}</td>`;
+        tableBody.appendChild(row);
+    });
+    
+    // Total Row
+    const totalRow = document.createElement('tr');
+    totalRow.style.borderTop = '2px solid #555';
+    totalRow.innerHTML = `<td style="font-weight: bold; color: #fff;">Total</td>`;
+    
+    let overallCounts = {};
+    let totalAll = 0;
+    loadedFiles.forEach(f => {
+        totalAll += f.annotations.length;
+        f.annotations.forEach(a => { overallCounts[a.color] = (overallCounts[a.color] || 0) + 1; });
+    });
+    
+    palette.forEach(p => {
+        const count = overallCounts[p.color] || 0;
+        totalRow.innerHTML += `<td style="text-align: center; font-weight: bold; color: ${p.color};">${count}</td>`;
+    });
+    totalRow.innerHTML += `<td style="text-align: right; font-weight: bold; color: #fff;">${totalAll}</td>`;
+    tableBody.appendChild(totalRow);
+}
+
+// Export Utils
+function exportImageAndLog(fileObj) {
+    return new Promise((resolve) => {
+        const fileAnn = fileObj.annotations;
+        const total = fileAnn.length;
+        let colorCounts = {};
+        fileAnn.forEach(a => { colorCounts[a.color] = (colorCounts[a.color] || 0) + 1; });
+        const activePalette = palette.filter(p => (colorCounts[p.color] || 0) > 0);
+
+        const expCanvas = document.createElement('canvas');
+        expCanvas.width = fileObj.image.width;
+        expCanvas.height = fileObj.image.height;
+        const expCtx = expCanvas.getContext('2d');
+        
+        let finalHeight = fileObj.image.height;
+        const footerPadding = currentTextSize * 2.5;
+        if (exportWithSummary && activePalette.length > 0) {
+            finalHeight += footerPadding;
+        }
+        expCanvas.height = finalHeight;
+        
+        expCtx.fillStyle = "#ffffff";
+        expCtx.fillRect(0, 0, expCanvas.width, expCanvas.height);
+        expCtx.drawImage(fileObj.image, 0, 0);
+        
+        // Render circles specific to this image
+        let counters = {};
+        let lastIndices = {};
+        fileAnn.forEach((ann, index) => {
+            counters[ann.color] = (counters[ann.color] || 0) + 1;
+            lastIndices[ann.color] = index;
+        });
+
+        fileAnn.forEach((ann, index) => {
+            expCtx.beginPath();
+            expCtx.arc(ann.x, ann.y, currentRadius, 0, 2 * Math.PI);
+            expCtx.lineWidth = currentThickness;
+            expCtx.strokeStyle = ann.color;
+            expCtx.globalAlpha = 1.0;
+            expCtx.stroke();
+            
+            if (showCircleLabels && index === lastIndices[ann.color]) {
+                const num = counters[ann.color];
+                expCtx.fillStyle = ann.color;
+                expCtx.font = `bold ${currentTextSize}px Arial`;
+                expCtx.textAlign = 'left';
+                expCtx.textBaseline = 'middle';
+                expCtx.globalAlpha = 0.75;
+                expCtx.lineWidth = Math.max(2, currentTextSize * 0.15);
+                expCtx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+                expCtx.strokeText(num, ann.x + currentRadius + 5, ann.y);
+                expCtx.fillText(num, ann.x + currentRadius + 5, ann.y);
+                expCtx.globalAlpha = 1.0;
+            }
+        });
+
+        // Overlay Summary
+        if (exportWithSummary && activePalette.length > 0) {
+            expCtx.fillStyle = "#111111"; 
+            expCtx.fillRect(0, fileObj.image.height, expCanvas.width, footerPadding);
+            
+            let summaryX = 20;
+            let summaryY = fileObj.image.height + footerPadding / 2;
+            expCtx.textAlign = 'left';
+            expCtx.textBaseline = 'middle';
+            expCtx.font = `bold ${currentTextSize}px Arial`;
+            
+            activePalette.forEach(p => {
+                const count = colorCounts[p.color];
+                const percent = Math.round((count / total) * 100);
+                expCtx.fillStyle = p.color;
+                const text = `${p.tag}: ${count} (${percent}%)`;
+                expCtx.fillText(text, summaryX, summaryY);
+                summaryX += expCtx.measureText(text + "   ").width;
+            });
+        }
+
+        // Image Download
+        const link = document.createElement('a');
+        link.download = `${fileObj.name}_annotated.jpg`;
+        link.href = expCanvas.toDataURL('image/jpeg', 0.95);
+        link.click();
+
+        // Stats Log text file
+        if (exportWithLog) {
+            let logText = `Filename: ${fileObj.name}\nDate: ${new Date().toLocaleString()}\nTotal: ${total}\n\n`;
+            activePalette.forEach(p => {
+                const count = colorCounts[p.color];
+                const percent = Math.round((count / total) * 100);
+                logText += `${p.tag}: ${count} (${percent}%)\n`;
+            });
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const logLink = document.createElement('a');
+            logLink.download = `${fileObj.name}_stats.txt`;
+            logLink.href = URL.createObjectURL(blob);
+            setTimeout(() => {
+                logLink.click();
+                resolve();
+            }, 100);
+        } else {
+            resolve();
+        }
+    });
+}
+
+// Single Image Export
+document.getElementById('export-btn').addEventListener('click', async () => {
     if (!image) { alert("Please load an image first."); return; }
     
-    const total = annotations.length;
-    let colorCounts = {};
-    annotations.forEach(a => { colorCounts[a.color] = (colorCounts[a.color] || 0) + 1; });
-
-    // Filter palette for non-zero counts for log/overlay
-    const activePalette = palette.filter(p => (colorCounts[p.color] || 0) > 0);
-
-    // 1. Image Export
-    const expCanvas = document.createElement('canvas');
-    let finalHeight = canvas.height;
-    const footerPadding = currentTextSize * 2.5;
-    if (exportWithSummary && activePalette.length > 0) {
-        finalHeight += footerPadding;
+    if (isMultiMode && activeFileIndex >= 0 && activeFileIndex < loadedFiles.length) {
+        loadedFiles[activeFileIndex].annotations = annotations;
     }
-    expCanvas.width = canvas.width;
-    expCanvas.height = finalHeight;
-    const expCtx = expCanvas.getContext('2d');
     
-    expCtx.fillStyle = "#ffffff";
-    expCtx.fillRect(0, 0, expCanvas.width, expCanvas.height);
-    expCtx.drawImage(image, 0, 0);
-    drawAnnotations(expCtx);
+    const activeFile = !isMultiMode ? {
+        name: currentFileName,
+        image: image,
+        annotations: annotations
+    } : loadedFiles[activeFileIndex];
 
-    if (exportWithSummary && activePalette.length > 0) {
-        expCtx.fillStyle = "#111111"; 
-        expCtx.fillRect(0, canvas.height, expCanvas.width, footerPadding);
-        
-        let summaryX = 20;
-        let summaryY = canvas.height + footerPadding / 2;
-        expCtx.textAlign = 'left';
-        expCtx.textBaseline = 'middle';
-        expCtx.font = `bold ${currentTextSize}px Arial`;
-        
-        activePalette.forEach(p => {
-            const count = colorCounts[p.color];
-            const percent = Math.round((count / total) * 100);
-            expCtx.fillStyle = p.color;
-            const text = `${p.tag}: ${count} (${percent}%)`;
-            expCtx.fillText(text, summaryX, summaryY);
-            summaryX += expCtx.measureText(text + "   ").width;
-        });
+    await exportImageAndLog(activeFile);
+});
+
+// Batch Image Export
+document.getElementById('export-all-btn').addEventListener('click', async () => {
+    if (loadedFiles.length === 0) { alert("No images loaded."); return; }
+    
+    if (activeFileIndex >= 0 && activeFileIndex < loadedFiles.length) {
+        loadedFiles[activeFileIndex].annotations = annotations;
     }
-
-    const link = document.createElement('a');
-    link.download = `${currentFileName}_annotated.jpg`;
-    link.href = expCanvas.toDataURL('image/jpeg', 0.95);
-    link.click();
-
-    // 2. Log Export
-    if (exportWithLog) {
-        let logText = `Filename: ${currentFileName}\nDate: ${new Date().toLocaleString()}\nTotal: ${total}\n\n`;
-        activePalette.forEach(p => {
-            const count = colorCounts[p.color];
-            const percent = Math.round((count / total) * 100);
-            logText += `${p.tag}: ${count} (${percent}%)\n`;
-        });
-        const blob = new Blob([logText], { type: 'text/plain' });
-        const logLink = document.createElement('a');
-        logLink.download = `${currentFileName}_stats.txt`;
-        logLink.href = URL.createObjectURL(blob);
-        setTimeout(() => logLink.click(), 100);
+    
+    // Process all images asynchronously
+    for (let i = 0; i < loadedFiles.length; i++) {
+        await exportImageAndLog(loadedFiles[i]);
+        await new Promise(r => setTimeout(r, 450)); // browser rate-limit safeguard
     }
 });
 
+// CSV Export
+document.getElementById('export-csv-btn').addEventListener('click', () => {
+    if (!isMultiMode) {
+        if (!image) { alert("Please load an image first."); return; }
+        
+        const total = annotations.length;
+        let colorCounts = {};
+        annotations.forEach(a => { colorCounts[a.color] = (colorCounts[a.color] || 0) + 1; });
+        
+        let csvContent = "Tag,Color,Count,Percentage\n";
+        palette.forEach(p => {
+            const count = colorCounts[p.color] || 0;
+            const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+            csvContent += `"${p.tag}","${p.color}",${count},${percent}%\n`;
+        });
+        csvContent += `"Total",,${total},100%\n`;
+        
+        downloadCSV(`${currentFileName}_stats.csv`, csvContent);
+    } else {
+        if (loadedFiles.length === 0) { alert("Please load images first."); return; }
+        
+        if (activeFileIndex >= 0 && activeFileIndex < loadedFiles.length) {
+            loadedFiles[activeFileIndex].annotations = annotations;
+        }
+
+        // CSV Header
+        let csvContent = "File";
+        palette.forEach(p => {
+            csvContent += `,"${p.tag} (Count)","${p.tag} (%)"`;
+        });
+        csvContent += ",Total\n";
+        
+        let overallCounts = {};
+        let totalAll = 0;
+        
+        loadedFiles.forEach(f => {
+            let fileCounts = {};
+            f.annotations.forEach(a => { 
+                fileCounts[a.color] = (fileCounts[a.color] || 0) + 1; 
+                overallCounts[a.color] = (overallCounts[a.color] || 0) + 1;
+            });
+            totalAll += f.annotations.length;
+            
+            const fileTotal = f.annotations.length;
+            let fileRow = `"${f.name}"`;
+            
+            palette.forEach(p => {
+                const count = fileCounts[p.color] || 0;
+                const percent = fileTotal > 0 ? Math.round((count / fileTotal) * 100) : 0;
+                fileRow += `,${count},${percent}%`;
+            });
+            fileRow += `,${fileTotal}\n`;
+            csvContent += fileRow;
+        });
+        
+        // Total row
+        let totalRow = "Total";
+        palette.forEach(p => {
+            const count = overallCounts[p.color] || 0;
+            const percent = totalAll > 0 ? Math.round((count / totalAll) * 100) : 0;
+            totalRow += `,${count},${percent}%`;
+        });
+        totalRow += `,${totalAll}\n`;
+        csvContent += totalRow;
+        
+        downloadCSV("all_images_stats_summary.csv", csvContent);
+    }
+});
+
+function downloadCSV(filename, content) {
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM
+    const blob = new Blob([bom, content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Startup Initialization
 loadSettings();
+toggleMultiModeUI();
 updateStats();
