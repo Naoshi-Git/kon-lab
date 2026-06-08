@@ -12,6 +12,7 @@ let orientation = 'Portrait';
 let globalScale = 1.0;
 let layoutDirection = 'row';
 let marginMm = 10;
+let globalPaddingMm = 0;
 let dividerMode = 'none';
 let pageCache = {}; // index -> Object URL (JPEG Blob)
 
@@ -48,6 +49,8 @@ const presetNameInput = document.getElementById('preset-name');
 const btnSavePreset = document.getElementById('btn-save-preset');
 const btnDeletePreset = document.getElementById('btn-delete-preset');
 const marginInput = document.getElementById('margin-input');
+const globalPaddingInput = document.getElementById('global-margin-input');
+const globalPaddingSlider = document.getElementById('global-margin-slider');
 const dividerSelect = document.getElementById('divider-select');
 
 let uiZoom = 1.0;
@@ -192,12 +195,30 @@ function init() {
     });
     zoomScaleInput.addEventListener('change', (e) => {
         let val = parseFloat(e.target.value);
+        if (isNaN(val)) val = 1.0;
         if (val < 0.1) val = 0.1;
         if (val > 3.0) val = 3.0;
         globalScale = val;
         zoomScaleSlider.value = val;
         zoomScaleInput.value = val.toFixed(2);
         updateScaleCSS();
+    });
+
+    // Global padding sync and apply
+    globalPaddingSlider.addEventListener('input', (e) => {
+        globalPaddingMm = parseInt(e.target.value) || 0;
+        globalPaddingInput.value = globalPaddingMm;
+        renderLayout();
+    });
+    globalPaddingInput.addEventListener('change', (e) => {
+        let val = parseInt(e.target.value);
+        if (isNaN(val)) val = 0;
+        if (val < 0) val = 0;
+        if (val > 50) val = 50;
+        globalPaddingMm = val;
+        globalPaddingInput.value = val;
+        globalPaddingSlider.value = val;
+        renderLayout();
     });
 
     btnExport.addEventListener('click', generateNIn1Pdf);
@@ -209,7 +230,7 @@ function loadPresets() {
     let presets = JSON.parse(localStorage.getItem('nIn1Presets')) || {};
     
     if (Object.keys(presets).length === 0) {
-        presets['デフォルト'] = { nValue: 4, orientation: 'Portrait', layoutDirection: 'row', globalScale: 1.0, marginMm: 10, dividerMode: 'none' };
+        presets['デフォルト'] = { nValue: 4, orientation: 'Portrait', layoutDirection: 'row', globalScale: 1.0, marginMm: 10, globalPaddingMm: 0, dividerMode: 'none' };
         localStorage.setItem('nIn1Presets', JSON.stringify(presets));
     }
     
@@ -231,12 +252,15 @@ function applyPreset(name) {
         layoutDirection = preset.layoutDirection || 'row';
         globalScale = preset.globalScale || 1.0;
         marginMm = preset.marginMm !== undefined ? preset.marginMm : 10;
+        globalPaddingMm = preset.globalPaddingMm !== undefined ? preset.globalPaddingMm : 0;
         dividerMode = preset.dividerMode || 'none';
         
         nValueSelect.value = nValue;
         orientationSelect.value = orientation;
         layoutDirectionSelect.value = layoutDirection;
         marginInput.value = marginMm;
+        globalPaddingInput.value = globalPaddingMm;
+        globalPaddingSlider.value = globalPaddingMm;
         dividerSelect.value = dividerMode;
         zoomScaleSlider.value = globalScale;
         zoomScaleInput.value = globalScale.toFixed(2);
@@ -254,6 +278,7 @@ function savePreset(name) {
         layoutDirection: layoutDirection,
         globalScale: globalScale,
         marginMm: marginMm,
+        globalPaddingMm: globalPaddingMm,
         dividerMode: dividerMode
     };
     localStorage.setItem('nIn1Presets', JSON.stringify(presets));
@@ -437,6 +462,17 @@ async function renderLayout() {
             sheetEl.appendChild(marginDiv);
         }
 
+        if (globalPaddingMm > 0) {
+            const physicalW = orientation === 'Portrait' ? 210 : 297;
+            const pxPerMm = sheetVisualWidth / physicalW;
+            const globalPadPx = globalPaddingMm * pxPerMm;
+            
+            padLeft += globalPadPx;
+            padRight += globalPadPx;
+            padTop += globalPadPx;
+            padBottom += globalPadPx;
+        }
+
         sheetEl.style.padding = `${padTop}px ${padRight}px ${padBottom}px ${padLeft}px`;
 
         for (let i = 0; i < slotsPerSheet; i++) {
@@ -578,8 +614,9 @@ async function createFinalPdfBlob() {
     const { cols, rows } = getGridConfig(nValue, orientation);
     
     const marginPt = marginMm * 2.83465;
-    let printableW = PAGE_WIDTH;
-    let printableH = PAGE_HEIGHT;
+    const globalPadPt = globalPaddingMm * 2.83465;
+    let printableW = PAGE_WIDTH - (globalPadPt * 2);
+    let printableH = PAGE_HEIGHT - (globalPadPt * 2);
     
     if (marginMm > 0) {
         if (orientation === 'Portrait') printableW -= marginPt;
@@ -652,13 +689,13 @@ async function createFinalPdfBlob() {
             }
             
             const sheetIdx = Math.floor(i / (cols * rows));
-            let gridOriginX = 0;
-            let gridOriginY = 0;
+            let gridOriginX = globalPadPt;
+            let gridOriginY = globalPadPt;
             
             if (orientation === 'Portrait') {
-                if (sheetIdx % 2 === 0) gridOriginX = marginPt;
+                if (sheetIdx % 2 === 0) gridOriginX += marginPt;
             } else {
-                if (sheetIdx % 2 !== 0) gridOriginY = marginPt;
+                if (sheetIdx % 2 !== 0) gridOriginY += marginPt;
             }
             
             const x = gridOriginX + col * cellW;
@@ -686,13 +723,13 @@ async function createFinalPdfBlob() {
         const drawH = (dividerMode === 'all' || dividerMode === 'horizontal' || dividerMode === 'inner');
         
         pages.forEach((page, sheetIdx) => {
-            let gridOriginX = 0;
-            let gridOriginY = 0;
+            let gridOriginX = globalPadPt;
+            let gridOriginY = globalPadPt;
             
             if (orientation === 'Portrait') {
-                if (sheetIdx % 2 === 0) gridOriginX = marginPt;
+                if (sheetIdx % 2 === 0) gridOriginX += marginPt;
             } else {
-                if (sheetIdx % 2 !== 0) gridOriginY = marginPt;
+                if (sheetIdx % 2 !== 0) gridOriginY += marginPt;
             }
             
             if (drawV) {
