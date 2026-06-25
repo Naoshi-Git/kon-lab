@@ -323,6 +323,10 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
     transform: translateZ(0); 
 }
 
+.is-duplicate {
+    filter: grayscale(100%) opacity(0.5);
+}
+
 /* Toolbar Overlay */
 .slot-overlay {
     position: absolute; top: 0; left: 0; right: 0; bottom: 0;
@@ -338,6 +342,12 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
     content: "空白"; color: var(--panel-border); font-weight: 500; font-size: 1.5rem; position: absolute; z-index: 1;
 }
 .slot.is-skipped .page-preview-img { display: none; }
+
+.slot.is-ghost { background-color: var(--panel-bg); }
+.slot.is-ghost::before {
+    content: "自動空白"; color: var(--panel-border); font-weight: 500; font-size: 1.2rem; position: absolute; z-index: 1;
+}
+.slot.is-ghost .slot-overlay { display: none; }
 
 .slot-toolbar {
     display: flex; gap: 12px; background: var(--bg-color); padding: 8px 16px; border-radius: 20px;

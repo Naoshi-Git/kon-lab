@@ -8,7 +8,6 @@ let originalPdfDoc = null;
 let pageMapping = []; // { type: 'page', pageIndex: number, originalOrder: number } | { type: 'blank' }
 let deletedPages = []; // { pageIndex: number, originalOrder: number }
 let a3Orientation = 'Landscape';
-let a3LayoutMode = 2; // 1: 1-in-1, 2: 2-in-1
 let globalScale = 1.0;
 let pageCache = {}; // index -> Object URL (JPEG Blob)
 
@@ -39,7 +38,6 @@ const btnZoomOut = document.getElementById('btn-preview-zoom-out');
 const previewZoomLevel = document.getElementById('preview-zoom-level');
 
 const a3OrientationSelect = document.getElementById('a3-orientation');
-const a3LayoutModeSelect = document.getElementById('a3-layout-mode');
 const presetSelect = document.getElementById('preset-select');
 const presetNameInput = document.getElementById('preset-name');
 const btnSavePreset = document.getElementById('btn-save-preset');
@@ -47,20 +45,7 @@ const btnDeletePreset = document.getElementById('btn-delete-preset');
 
 let uiZoom = 1.0;
 
-// grid configs
-const getGridConfig = () => {
-    if (a3LayoutMode === 1) {
-        return { cols: 1, rows: 1 };
-    } else {
-        if (a3Orientation === 'Portrait') {
-            // A3 Portrait -> 2-in-1 is Top/Bottom
-            return { cols: 1, rows: 2 };
-        } else {
-            // A3 Landscape -> 2-in-1 is Left/Right
-            return { cols: 2, rows: 1 };
-        }
-    }
-};
+// getGridConfig is no longer needed globally, cols/rows will be determined per sheet.
 
 const loadingMessages = [
     "高度なレイアウトを計算中...",
@@ -131,7 +116,6 @@ function init() {
     });
 
     a3OrientationSelect.addEventListener('change', (e) => { a3Orientation = e.target.value; renderLayout(); });
-    a3LayoutModeSelect.addEventListener('change', (e) => { a3LayoutMode = parseInt(e.target.value); renderLayout(); });
     
     // Presets
     loadPresets();
@@ -191,7 +175,7 @@ function loadPresets() {
     let presets = JSON.parse(localStorage.getItem('a3PrintPresets')) || {};
     
     if (Object.keys(presets).length === 0) {
-        presets['デフォルト'] = { a3Orientation: 'Landscape', a3LayoutMode: 2, globalScale: 1.0 };
+        presets['デフォルト'] = { a3Orientation: 'Landscape', globalScale: 1.0 };
         localStorage.setItem('a3PrintPresets', JSON.stringify(presets));
     }
     
@@ -209,11 +193,9 @@ function applyPreset(name) {
     const preset = presets[name];
     if (preset) {
         a3Orientation = preset.a3Orientation || 'Landscape';
-        a3LayoutMode = preset.a3LayoutMode || 2;
         globalScale = preset.globalScale || 1.0;
         
         a3OrientationSelect.value = a3Orientation;
-        a3LayoutModeSelect.value = a3LayoutMode;
         zoomScaleSlider.value = globalScale;
         zoomScaleInput.value = globalScale.toFixed(2);
         
@@ -226,7 +208,6 @@ function savePreset(name) {
     const presets = JSON.parse(localStorage.getItem('a3PrintPresets')) || {};
     presets[name] = {
         a3Orientation: a3Orientation,
-        a3LayoutMode: a3LayoutMode,
         globalScale: globalScale
     };
     localStorage.setItem('a3PrintPresets', JSON.stringify(presets));
@@ -280,7 +261,7 @@ async function handleFile(file) {
         pageCache = {};
 
         for (let i = 0; i < originalPdfDoc.numPages; i++) {
-            pageMapping.push({ type: 'page', pageIndex: i, originalOrder: i });
+            pageMapping.push({ type: 'page', pageIndex: i, originalOrder: i, isA3Full: false });
         }
 
         fileInfo.textContent = `${file.name} (${originalPdfDoc.numPages}ページ)`;
@@ -360,14 +341,45 @@ async function renderLayout() {
     const aspect = a3Orientation === 'Portrait' ? Math.sqrt(2) : 1 / Math.sqrt(2); 
     const sheetVisualHeight = sheetVisualWidth * aspect;
 
-    let totalSheets = Math.ceil(pageMapping.length / slotsPerSheet);
-    if (totalSheets === 0) totalSheets = 1;
+    // Pack pages into sheets
+    let sheets = [];
+    let currentSheet = [];
+    
+    for (let i = 0; i < pageMapping.length; i++) {
+        const item = pageMapping[i];
+        item._mapIndex = i; // Store original index to manipulate pageMapping later
+        
+        if (item.type === 'page' && item.isA3Full) {
+            if (currentSheet.length > 0) {
+                while (currentSheet.length < 2) currentSheet.push({ type: 'ghost-blank' });
+                sheets.push(currentSheet);
+                currentSheet = [];
+            }
+            sheets.push([item]);
+        } else {
+            currentSheet.push(item);
+            if (currentSheet.length === 2) {
+                sheets.push(currentSheet);
+                currentSheet = [];
+            }
+        }
+    }
+    if (currentSheet.length > 0) {
+        while (currentSheet.length < 2) currentSheet.push({ type: 'ghost-blank' });
+        sheets.push(currentSheet);
+    }
+    if (sheets.length === 0) sheets.push([]);
 
-    const maxProgress = totalSheets * slotsPerSheet;
+    const maxProgress = sheets.reduce((acc, sheet) => acc + sheet.length, 0);
     showLoading(maxProgress);
     let currentProgress = 0;
 
-    for (let s = 0; s < totalSheets; s++) {
+    for (let s = 0; s < sheets.length; s++) {
+        const sheetItems = sheets[s];
+        const isA3Sheet = sheetItems.length === 1 && sheetItems[0].isA3Full;
+        const cols = isA3Sheet ? 1 : (a3Orientation === 'Portrait' ? 1 : 2);
+        const rows = isA3Sheet ? 1 : (a3Orientation === 'Portrait' ? 2 : 1);
+
         const sheetEl = document.createElement('div');
         sheetEl.className = 'sheet';
         sheetEl.style.width = `${sheetVisualWidth}px`;
@@ -380,9 +392,9 @@ async function renderLayout() {
 
         sheetEl.style.padding = '0px';
 
-        for (let i = 0; i < slotsPerSheet; i++) {
-            const mapIndex = s * slotsPerSheet + i;
-            const slotItem = pageMapping[mapIndex];
+        for (let i = 0; i < sheetItems.length; i++) {
+            const slotItem = sheetItems[i];
+            const mapIndex = slotItem._mapIndex; // Only defined for non-ghost items
 
             const slotEl = document.createElement('div');
             slotEl.className = 'slot';
@@ -390,7 +402,7 @@ async function renderLayout() {
             const overlayEl = document.createElement('div');
             overlayEl.className = 'slot-overlay';
 
-            if (slotItem) {
+            if (slotItem && slotItem.type !== 'ghost-blank') {
                 if (slotItem.type === 'page') {
                     // Create IMG tag for huge memory savings
                     const img = document.createElement('img');
@@ -416,6 +428,7 @@ async function renderLayout() {
                         badge.className = 'copy-badge';
                         badge.textContent = `[${copyCount}]`;
                         slotEl.appendChild(badge);
+                        img.classList.add('is-duplicate');
                     }
 
                     try {
@@ -440,8 +453,18 @@ async function renderLayout() {
 
                     // Toolbar
                     const tbContent = slotToolbarTemplate.content.cloneNode(true);
+                    const btnA3Toggle = tbContent.querySelector('.btn-a3-toggle');
+                    if (slotItem.isA3Full) {
+                        btnA3Toggle.textContent = 'A4に戻す';
+                    } else {
+                        btnA3Toggle.textContent = 'A3表示';
+                    }
+                    btnA3Toggle.onclick = () => {
+                        slotItem.isA3Full = !slotItem.isA3Full;
+                        renderLayout();
+                    };
                     tbContent.querySelector('.btn-duplicate').onclick = () => {
-                        pageMapping.splice(mapIndex + 1, 0, { type: 'page', pageIndex: slotItem.pageIndex, originalOrder: slotItem.originalOrder });
+                        pageMapping.splice(mapIndex + 1, 0, { type: 'page', pageIndex: slotItem.pageIndex, originalOrder: slotItem.originalOrder, isA3Full: slotItem.isA3Full });
                         renderLayout();
                     };
                     tbContent.querySelector('.btn-skip').onclick = () => {
@@ -465,6 +488,9 @@ async function renderLayout() {
                     };
                     overlayEl.appendChild(tbContent);
                 }
+            } else if (slotItem && slotItem.type === 'ghost-blank') {
+                slotEl.classList.add('is-ghost');
+                slotEl.style.backgroundColor = '#f8fafc'; 
             } else {
                 slotEl.classList.add('is-skipped');
                 slotEl.style.backgroundColor = '#f8fafc'; 
@@ -526,27 +552,57 @@ async function createFinalPdfBlob() {
     const PAGE_WIDTH = a3Orientation === 'Portrait' ? Math.min(A3_W, A3_H) : Math.max(A3_W, A3_H);
     const PAGE_HEIGHT = a3Orientation === 'Portrait' ? Math.max(A3_W, A3_H) : Math.min(A3_W, A3_H);
 
-    const { cols, rows } = getGridConfig();
+    let sheets = [];
+    let currentSheet = [];
     
-    let printableW = PAGE_WIDTH;
-    let printableH = PAGE_HEIGHT;
-    
-    const cellW = printableW / cols;
-    const cellH = printableH / rows;
+    for (let i = 0; i < pageMapping.length; i++) {
+        const item = pageMapping[i];
+        if (item.type === 'page' && item.isA3Full) {
+            if (currentSheet.length > 0) {
+                while (currentSheet.length < 2) currentSheet.push({ type: 'ghost-blank' });
+                sheets.push(currentSheet);
+                currentSheet = [];
+            }
+            sheets.push([item]);
+        } else {
+            currentSheet.push(item);
+            if (currentSheet.length === 2) {
+                sheets.push(currentSheet);
+                currentSheet = [];
+            }
+        }
+    }
+    if (currentSheet.length > 0) {
+        while (currentSheet.length < 2) currentSheet.push({ type: 'ghost-blank' });
+        sheets.push(currentSheet);
+    }
 
-    const pageIndicesNeeded = new Set();
-    pageMapping.forEach(item => {
-        if (item.type === 'page') pageIndicesNeeded.add(item.pageIndex);
+    const pageVariationsNeeded = new Set();
+    sheets.forEach(sheetItems => {
+        const isA3Sheet = sheetItems.length === 1 && sheetItems[0].isA3Full;
+        sheetItems.forEach(item => {
+            if (item.type === 'page') {
+                pageVariationsNeeded.add(`${item.pageIndex}_${isA3Sheet}`);
+            }
+        });
     });
     
-    const indicesArray = Array.from(pageIndicesNeeded).sort((a,b)=>a-b);
-    if(indicesArray.length === 0) return null; // No pages
+    if (pageVariationsNeeded.size === 0) return null;
     
     const indexMap = {};
-    for (let idx of indicesArray) {
+    for (let variation of pageVariationsNeeded) {
+        const [pageIndexStr, isA3Str] = variation.split('_');
+        const idx = parseInt(pageIndexStr);
+        const isA3Full = isA3Str === 'true';
+        
         const srcPage = srcDoc.getPage(idx);
         const origBox = typeof srcPage.getCropBox === 'function' ? srcPage.getCropBox() : { x: 0, y: 0, width: srcPage.getWidth(), height: srcPage.getHeight() };
         
+        const cols = isA3Full ? 1 : (a3Orientation === 'Portrait' ? 1 : 2);
+        const rows = isA3Full ? 1 : (a3Orientation === 'Portrait' ? 2 : 1);
+        const cellW = PAGE_WIDTH / cols;
+        const cellH = PAGE_HEIGHT / rows;
+
         let shouldRotate = false;
         if ((origBox.width > origBox.height) !== (cellW > cellH)) {
             shouldRotate = true;
@@ -567,63 +623,57 @@ async function createFinalPdfBlob() {
             cropH = cellH / finalScale;
         }
         
-        // 中心を基準にトリミング範囲を計算
         const cropX = origBox.x + (origBox.width - cropW) / 2;
         const cropY = origBox.y + (origBox.height - cropH) / 2;
         
-        // embedPageを使用して、明示的なBoundingBox（切り抜き範囲）を指定してXObjectを作成
         const embeddedPage = await finalDoc.embedPage(srcPage, {
-            left: cropX,
-            bottom: cropY,
-            right: cropX + cropW,
-            top: cropY + cropH
+            left: cropX, bottom: cropY, right: cropX + cropW, top: cropY + cropH
         });
         
-        indexMap[idx] = { page: embeddedPage, shouldRotate };
+        indexMap[variation] = { page: embeddedPage, shouldRotate, cellW, cellH };
     }
 
-    let currentSheet = null;
-    
-    const maxProgress = pageMapping.length;
+    const maxProgress = sheets.reduce((acc, sheet) => acc + sheet.length, 0);
     showLoading(maxProgress);
     let currentProgress = 0;
 
-    for (let i = 0; i < pageMapping.length; i++) {
-        const item = pageMapping[i];
-        const indexInSheet = i % (cols * rows);
-        
-        if (indexInSheet === 0) {
-            currentSheet = finalDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-        }
+    for (let s = 0; s < sheets.length; s++) {
+        const sheetItems = sheets[s];
+        const currentSheetPage = finalDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+        const isA3Sheet = sheetItems.length === 1 && sheetItems[0].isA3Full;
+        const cols = isA3Sheet ? 1 : (a3Orientation === 'Portrait' ? 1 : 2);
 
-        if (item.type === 'page') {
-            const { page: embeddedPage, shouldRotate } = indexMap[item.pageIndex];
+        for (let i = 0; i < sheetItems.length; i++) {
+            const item = sheetItems[i];
             
-            let col, row;
-            col = indexInSheet % cols;
-            row = Math.floor(indexInSheet / cols);
-            
-            const x = col * cellW;
-            const y = printableH - (row + 1) * cellH; 
+            if (item.type === 'page') {
+                const variation = `${item.pageIndex}_${isA3Sheet}`;
+                const { page: embeddedPage, shouldRotate, cellW, cellH } = indexMap[variation];
+                
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                
+                const x = col * cellW;
+                const y = PAGE_HEIGHT - (row + 1) * cellH; 
 
-            if (shouldRotate) {
-                currentSheet.drawPage(embeddedPage, {
-                    x: x,
-                    y: y + cellH,
-                    width: cellH,
-                    height: cellW,
-                    rotate: window.PDFLib.degrees(-90)
-                });
-            } else {
-                currentSheet.drawPage(embeddedPage, { x: x, y: y, width: cellW, height: cellH });
+                if (shouldRotate) {
+                    currentSheetPage.drawPage(embeddedPage, {
+                        x: x,
+                        y: y + cellH,
+                        width: cellH,
+                        height: cellW,
+                        rotate: window.PDFLib.degrees(-90)
+                    });
+                } else {
+                    currentSheetPage.drawPage(embeddedPage, { x: x, y: y, width: cellW, height: cellH });
+                }
             }
+            
+            currentProgress++;
+            updateLoadingProgress(currentProgress, maxProgress);
         }
         
-        currentProgress++;
-        updateLoadingProgress(currentProgress, maxProgress);
-        
-        // 5回に1回、メインスレッドを解放してプログレスバーを描画させる
-        if (currentProgress % 5 === 0) {
+        if (s % 5 === 0) {
             await new Promise(r => setTimeout(r, 0));
         }
     }
@@ -655,7 +705,7 @@ async function generateNIn1Pdf() {
 
         const a = document.createElement('a');
         a.href = url;
-        a.download = `[A3-${a3LayoutMode}-in-1]${baseName}_${yymmdd}.pdf`;
+        a.download = `[A3-mix]${baseName}_${yymmdd}.pdf`;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch(e) {

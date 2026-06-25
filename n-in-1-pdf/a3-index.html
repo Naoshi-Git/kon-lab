@@ -67,13 +67,7 @@
                         <option value="Landscape">A3横</option>
                     </select>
                 </div>
-                <div class="setting-row">
-                    <span>配置モード</span>
-                    <select id="a3-layout-mode">
-                        <option value="1">1枚拡大 (1-in-1)</option>
-                        <option value="2" selected>2枚割付 (2-in-1)</option>
-                    </select>
-                </div>
+
                 
                 <div class="setting-row zoom-row">
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
@@ -143,6 +137,7 @@
     <!-- Toolbar Template for each page slot -->
     <template id="slot-toolbar-template">
         <div class="slot-toolbar">
+            <button class="tool-btn btn-a3-toggle" title="A3/A4表示を切り替える">A3表示</button>
             <button class="tool-btn btn-duplicate" title="このページを複製">複製</button>
             <button class="tool-btn btn-skip" title="このページを除外">除外</button>
             <button class="tool-btn btn-blank" title="前に空白ページを挿入">空白挿入</button>
