@@ -333,9 +333,7 @@ async function renderLayout() {
     await new Promise(r => setTimeout(r, 10));
 
     previewContainer.innerHTML = '';
-    
-    const { cols, rows } = getGridConfig();
-    const slotsPerSheet = cols * rows;
+
 
     const sheetVisualWidth = 640; 
     const aspect = a3Orientation === 'Portrait' ? Math.sqrt(2) : 1 / Math.sqrt(2); 
