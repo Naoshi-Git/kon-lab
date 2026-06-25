@@ -274,7 +274,9 @@ async function handleFile(file) {
         deletedPages = [];
         
         // Revoke old blob urls
-        Object.values(pageCache).forEach(url => URL.revokeObjectURL(url));
+        Object.values(pageCache).forEach(item => {
+            if (item && item.url) URL.revokeObjectURL(item.url);
+        });
         pageCache = {};
 
         for (let i = 0; i < originalPdfDoc.numPages; i++) {
@@ -372,7 +374,7 @@ async function renderLayout() {
         sheetEl.style.height = `${sheetVisualHeight}px`;
         sheetEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
         sheetEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
-        sheetEl.style.gridAutoFlow = layoutDirection;
+        sheetEl.style.gridAutoFlow = 'row';
         sheetEl.style.boxSizing = 'border-box';
         sheetEl.style.position = 'relative';
 
