@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF N-in-1 Generator</title>
+    <title>A3 Print Tool (Dev)</title>
     <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖨️</text></svg>">
     
     <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="N-in-1 PDF Layout Tool" />
-    <meta property="og:description" content="実験ノートにプロトコルを自由なレイアウトで貼り付けたい——そんな現場のニーズから生まれた、PDF結合・N分割ツール。複数ページのPDFを自由にN分割レイアウトで配置し、高画質なPDFとして書き出せます。" />
+    <meta property="og:title" content="A3 Print Tool" />
+    <meta property="og:description" content="A4サイズのPDFを最適にA3サイズへ拡大・割付印刷するための専用ツール。" />
     <meta property="og:image" content="https://naoshi-git.github.io/n-in-1-pdf/favicon.png" />
-    <meta property="og:url" content="https://naoshi-git.github.io/n-in-1-pdf/" />
+    <meta property="og:url" content="https://naoshi-git.github.io/n-in-1-pdf/a3-index.html" />
     <meta property="og:type" content="website" />
     <!-- pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -39,11 +39,11 @@
         <!-- Sidebar Controls -->
         <aside class="sidebar glass-panel">
             <div class="brand">
-                <h1>N-in-1 PDF</h1>
-                <p>Advanced PDF Layout Tool</p>
+                <h1>A3 Print Tool</h1>
+                <p>Auto-Rotate A3 Layout Tool</p>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <a href="index.html" class="guide-link" style="color: var(--primary);">← N-in-1 ツールへ戻る</a>
                     <a href="guide.html" target="_blank" class="guide-link">📖 使い方ガイドを開く</a>
-                    <a href="a3-index.html" class="guide-link" style="color: var(--primary);">🖨️ A3専用ツールへ →</a>
                 </div>
             </div>
 
@@ -61,29 +61,17 @@
             <div class="control-group">
                 <label>2. レイアウト設定</label>
                 <div class="setting-row">
-                    <span>N-in-1</span>
-                    <select id="n-value">
-                        <option value="1">1-in-1</option>
-                        <option value="2">2-in-1</option>
-                        <option value="4" selected>4-in-1</option>
-                        <option value="6">6-in-1</option>
-                        <option value="8">8-in-1</option>
-                        <option value="9">9-in-1</option>
-                        <option value="16">16-in-1</option>
+                    <span>出力用紙</span>
+                    <select id="a3-orientation">
+                        <option value="Portrait">A3縦</option>
+                        <option value="Landscape">A3横</option>
                     </select>
                 </div>
                 <div class="setting-row">
-                    <span>用紙の向き</span>
-                    <select id="page-orientation">
-                        <option value="Portrait">縦 (Portrait)</option>
-                        <option value="Landscape">横 (Landscape)</option>
-                    </select>
-                </div>
-                <div class="setting-row">
-                    <span>配置順</span>
-                    <select id="layout-direction">
-                        <option value="row">Z型 (左→右→下)</option>
-                        <option value="column">N型 (上→下→右)</option>
+                    <span>配置モード</span>
+                    <select id="a3-layout-mode">
+                        <option value="1">1枚拡大 (1-in-1)</option>
+                        <option value="2" selected>2枚割付 (2-in-1)</option>
                     </select>
                 </div>
                 
@@ -97,38 +85,7 @@
             </div>
 
             <div class="control-group">
-                <label>3. 余白・枠線設定</label>
-                <div class="setting-row zoom-row" style="margin-bottom: 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                        <span>全体四方余白 (mm)</span>
-                        <input type="number" id="global-margin-input" value="0" step="1" min="0" max="50" style="width: 60px; text-align: right;">
-                    </div>
-                    <input type="range" id="global-margin-slider" min="0" max="50" step="1" value="0">
-                </div>
-                <div class="setting-row" style="align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <span>とじ代(マチ)</span>
-                        <span title="両面印刷用に長辺に対して左右(または上下)交互に余白を作ります" style="cursor:help; color:var(--primary); font-size:12px;">(?)</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <input type="number" id="margin-input" value="10" min="0" max="50" style="width: 60px; text-align: right;">
-                        <span>mm</span>
-                    </div>
-                </div>
-                <div class="setting-row">
-                    <span>区切り線</span>
-                    <select id="divider-select">
-                        <option value="none">なし</option>
-                        <option value="inner">内側のみ罫線</option>
-                        <option value="all">全罫線</option>
-                        <option value="vertical">縦区切りのみ</option>
-                        <option value="horizontal">横区切りのみ</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <label>4. プリセット</label>
+                <label>3. プリセット</label>
                 <div class="setting-row">
                     <select id="preset-select" style="flex: 1;">
                         <option value="">-- 保存済みの設定 --</option>
@@ -142,7 +99,7 @@
             </div>
 
             <div class="control-group" id="deleted-pages-group" style="display: none;">
-                <label>5. 除外されたページ</label>
+                <label>4. 除外されたページ</label>
                 <div id="deleted-pages-list" class="deleted-list">
                     <!-- Deleted pages shown here -->
                 </div>
@@ -186,6 +143,7 @@
     <!-- Toolbar Template for each page slot -->
     <template id="slot-toolbar-template">
         <div class="slot-toolbar">
+            <button class="tool-btn btn-duplicate" title="このページを複製">複製</button>
             <button class="tool-btn btn-skip" title="このページを除外">除外</button>
             <button class="tool-btn btn-blank" title="前に空白ページを挿入">空白挿入</button>
         </div>
@@ -197,6 +155,6 @@
         </div>
     </template>
 
-    <script src="script.js"></script>
+    <script src="a3-script.js"></script>
 </body>
 </html>

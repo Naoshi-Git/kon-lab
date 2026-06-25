@@ -360,6 +360,16 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
     font-family: sans-serif;
 }
 
+/* Copy Badge */
+.copy-badge {
+    position: absolute; top: 12px; left: 12px;
+    background: var(--primary); color: #fff;
+    font-size: 14px; font-weight: bold;
+    padding: 4px 10px; border-radius: 6px;
+    z-index: 4; pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
 /* Margin Highlights */
 .binding-margin {
     position: absolute;
