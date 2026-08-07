@@ -20,7 +20,7 @@ export const CAMPUSES = {
     id: "minoh",
     name: "箕面",
     longName: "箕面キャンパス",
-    coordinates: { lat: 34.8282, lng: 135.4896 },
+    coordinates: { lat: 34.85358, lng: 135.51669 },
     defaultOriginStop: "minoh",
     defaultDestinationStop: "minoh"
   },
