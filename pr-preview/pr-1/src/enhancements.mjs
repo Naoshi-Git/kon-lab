@@ -231,3 +231,5 @@ renderHomeEnhancements();
 updateSearchSummary();
 normalizeLabels();
 observeHomeRerenders();
+
+void import("./features-v3.mjs");
