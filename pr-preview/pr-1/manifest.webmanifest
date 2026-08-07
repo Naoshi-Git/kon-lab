@@ -1,0 +1,12 @@
+{
+  "name": "大阪大学 阪大シャトル検索",
+  "short_name": "阪大シャトル",
+  "description": "豊中・箕面・吹田キャンパス間の学内連絡バス検索",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#087f69",
+  "lang": "ja",
+  "icons": []
+}
