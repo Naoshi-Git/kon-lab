@@ -50,8 +50,10 @@ jobs:
       - name: Validate bus application
         run: |
           test -f source/campus-bus/index.html
+          test -f source/campus-bus/ui-v2.css
           node --check source/campus-bus/src/search-engine.mjs
           node --check source/campus-bus/src/app.mjs
+          node --check source/campus-bus/src/enhancements.mjs
           node --test source/campus-bus/tests/search-engine.test.mjs
 
       - name: Prepare preview files
