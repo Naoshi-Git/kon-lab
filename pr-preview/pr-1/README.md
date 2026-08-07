@@ -28,6 +28,31 @@
 
 通常ダイヤは2026年4月1日改正時刻表を転記しています。道路・気象状況等による当日の変更は、大学のKOAN掲示および公式案内を確認してください。
 
+## PRをWebページとして確認する
+
+PRごとの静的プレビューをGitHub Pagesへ自動配置します。
+
+- PR #1のプレビュー: `https://naoshi-git.github.io/kon-lab/pr-preview/pr-1/`
+- 一般形: `https://naoshi-git.github.io/kon-lab/pr-preview/pr-<PR番号>/`
+
+`.github/workflows/pr-pages-preview.yml` が、PRの作成・更新時に次の処理を行います。
+
+1. JavaScript構文チェックと検索エンジンのテスト
+2. `campus-bus/` を `gh-pages/pr-preview/pr-<番号>/` へ配置
+3. GitHub Pagesの再ビルドを要求
+4. PRのDeployment URLとしてプレビューURLを表示
+5. PRを閉じたときに該当プレビューを削除
+
+### 初回のみ必要なリポジトリ設定
+
+GitHubの `Settings > Pages` で以下を設定します。
+
+- Source: `Deploy from a branch`
+- Branch: `gh-pages`
+- Folder: `/ (root)`
+
+`gh-pages` ブランチは作成済みで、切り替え時点の本番ページ内容も複製済みです。本番は `.github/workflows/pages-production.yml` により、main更新時にPRプレビューを残したまま同期されます。
+
 ## ローカル確認
 
 ES Modulesを使用するため、ファイルを直接開かずHTTPサーバーを使用します。
