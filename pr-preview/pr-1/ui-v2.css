@@ -47,3 +47,48 @@ body{background:radial-gradient(circle at 50% -10%,rgba(45,40,127,.10),transpare
 #default-suita-stop-wrap{margin-top:10px}
 @media(max-width:400px){.view{padding-left:14px;padding-right:14px}.route-line{grid-template-columns:58px minmax(64px,.68fr) minmax(0,1.32fr);gap:6px;padding-right:43px}.route-line:has(.inline-stop.is-hidden){grid-template-columns:58px minmax(0,1fr)}.route-role{font-size:13px}.route-campus-select{font-size:16px}.inline-stop select{font-size:12px}.date-time-row{grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);gap:6px}.input-field input{padding-left:8px;padding-right:8px;font-size:16px}}
 @media(max-width:350px){.route-line{grid-template-columns:54px minmax(58px,.62fr) minmax(0,1.38fr)}.inline-stop select{font-size:11px}.next-times{font-size:29px}.quick-actions{grid-template-columns:1fr}}
+
+/* iOS Safari: keep native date/time controls inside the allocated grid cells. */
+.date-time-row.stable-inputs{
+  grid-template-columns:minmax(0,1.28fr) minmax(0,.72fr);
+  gap:8px;
+}
+.date-time-row.stable-inputs>.input-field{
+  min-width:0;
+  overflow:hidden;
+}
+.date-time-row.stable-inputs input[type="date"],
+.date-time-row.stable-inputs input[type="time"]{
+  display:block;
+  box-sizing:border-box;
+  inline-size:100%;
+  width:100%;
+  min-inline-size:0;
+  min-width:0;
+  max-inline-size:100%;
+  max-width:100%;
+  margin:0;
+  overflow:hidden;
+  text-overflow:clip;
+  white-space:nowrap;
+}
+@supports (-webkit-touch-callout:none){
+  .date-time-row.stable-inputs input[type="date"],
+  .date-time-row.stable-inputs input[type="time"]{
+    -webkit-appearance:none;
+    appearance:none;
+  }
+  .date-time-row.stable-inputs input::-webkit-date-and-time-value{
+    display:block;
+    width:100%;
+    min-width:0;
+    text-align:left;
+    padding:0;
+  }
+}
+@media(max-width:400px){
+  .date-time-row.stable-inputs{
+    grid-template-columns:minmax(0,1.34fr) minmax(0,.66fr);
+    gap:6px;
+  }
+}
