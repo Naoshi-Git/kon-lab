@@ -49,7 +49,8 @@ function renderHomeEnhancements() {
   const destination = homeDestination();
   const originKey = homeOriginKey();
   const label = $("#home-origin-label");
-  if (label) label.textContent = originCampus === "suita" ? `吹田・${STOPS[suitaStop()].shortName}` : CAMPUSES[originCampus].longName;
+  const wantedLabel = originCampus === "suita" ? `吹田・${STOPS[suitaStop()].shortName}` : CAMPUSES[originCampus].longName;
+  if (label && label.textContent !== wantedLabel) label.textContent = wantedLabel;
   if (!destination || destination === originCampus) return;
 
   const now = nowParts();
@@ -110,6 +111,7 @@ function syncSuitaControls() {
   if (dialogSelect) dialogSelect.value = stop;
   if (settingsWrap) settingsWrap.classList.toggle("is-hidden", campus !== "suita");
   if (settingsSelect) settingsSelect.value = stop;
+  $$('[data-campus-choice]').forEach((button) => button.classList.toggle("is-current", button.dataset.campusChoice === campus));
   const originCampus = $("#origin-campus");
   if (originCampus?.value === "suita" && $("#origin-stop")) $("#origin-stop").value = stop;
 }
@@ -158,44 +160,47 @@ function normalizeLabels(root = document) {
   }
 }
 
+function scheduleHomeSync(delay = 0) {
+  window.setTimeout(() => { syncSuitaControls(); renderHomeEnhancements(); normalizeLabels(); }, delay);
+}
+
 function bindEnhancements() {
   $("#dialog-suita-stop")?.addEventListener("change", (event) => {
     localStorage.setItem(SUITA_STOP_KEY, event.target.value);
-    syncSuitaControls();
-    renderHomeEnhancements();
+    scheduleHomeSync();
   });
   $("#default-suita-stop")?.addEventListener("change", (event) => {
     localStorage.setItem(SUITA_STOP_KEY, event.target.value);
-    syncSuitaControls();
-    renderHomeEnhancements();
+    scheduleHomeSync();
   });
+  $("#default-campus")?.addEventListener("change", () => scheduleHomeSync());
 
   $("#campus-dialog")?.addEventListener("click", (event) => {
     const choice = event.target.closest("[data-campus-choice]");
     if (!choice) return;
     if (choice.dataset.campusChoice === "suita") event.preventDefault();
-    setTimeout(() => { syncSuitaControls(); renderHomeEnhancements(); normalizeLabels(); }, 0);
+    scheduleHomeSync();
   }, true);
 
-  $("#home-origin-button")?.addEventListener("click", () => setTimeout(syncSuitaControls, 0));
-  $("#home-destination-chips")?.addEventListener("click", () => setTimeout(() => { renderHomeEnhancements(); normalizeLabels(); }, 0));
-  $("#refresh-button")?.addEventListener("click", () => setTimeout(() => { renderHomeEnhancements(); normalizeLabels(); }, 0));
-  $("#locate-button")?.addEventListener("click", () => setTimeout(() => { syncSuitaControls(); renderHomeEnhancements(); }, 1200));
-  $("#search-now-button")?.addEventListener("click", () => setTimeout(syncSuitaControls, 0));
-  $("#arrival-search-button")?.addEventListener("click", () => setTimeout(syncSuitaControls, 0));
-  $("#open-search-button")?.addEventListener("click", () => setTimeout(syncSuitaControls, 0));
-  $("#origin-campus")?.addEventListener("change", () => setTimeout(syncSuitaControls, 0));
+  $("#home-origin-button")?.addEventListener("click", () => window.setTimeout(syncSuitaControls, 0));
+  $("#home-destination-chips")?.addEventListener("click", () => scheduleHomeSync());
+  $("#refresh-button")?.addEventListener("click", () => scheduleHomeSync());
+  $("#locate-button")?.addEventListener("click", () => { scheduleHomeSync(900); scheduleHomeSync(2600); });
+  $("#search-now-button")?.addEventListener("click", () => window.setTimeout(syncSuitaControls, 0));
+  $("#arrival-search-button")?.addEventListener("click", () => window.setTimeout(syncSuitaControls, 0));
+  $("#open-search-button")?.addEventListener("click", () => window.setTimeout(syncSuitaControls, 0));
+  $("#origin-campus")?.addEventListener("change", () => window.setTimeout(syncSuitaControls, 0));
 
-  ["#direct-only", "#round-trip", "#stay-minutes"].forEach((selector) => $(selector)?.addEventListener("change", () => setTimeout(updateSearchSummary, 0)));
-  $("#search-form")?.addEventListener("submit", () => setTimeout(normalizeLabels, 0));
+  ["#direct-only", "#round-trip", "#stay-minutes"].forEach((selector) => $(selector)?.addEventListener("change", () => window.setTimeout(updateSearchSummary, 0)));
+  $("#search-form")?.addEventListener("submit", () => window.setTimeout(normalizeLabels, 0));
 
   $$(".timetable-direction button").forEach((button) => button.addEventListener("click", () => {
-    if (button.dataset.direction === "minoh") setTimeout(renderMinohTimetable, 0);
-    setTimeout(normalizeLabels, 0);
+    if (button.dataset.direction === "minoh") window.setTimeout(renderMinohTimetable, 0);
+    window.setTimeout(normalizeLabels, 0);
   }));
 
   $$(".bottom-nav button").forEach((button) => button.addEventListener("click", () => {
-    setTimeout(() => {
+    window.setTimeout(() => {
       syncSuitaControls();
       if (button.dataset.nav === "home") renderHomeEnhancements();
       if (button.dataset.nav === "timetable" && $(".timetable-direction button.is-active")?.dataset.direction === "minoh") renderMinohTimetable();
@@ -204,8 +209,25 @@ function bindEnhancements() {
   }));
 }
 
+function observeHomeRerenders() {
+  const targets = [$("#home-origin-label"), $("#home-destination-chips")].filter(Boolean);
+  if (!targets.length) return;
+  let queued = false;
+  const observer = new MutationObserver(() => {
+    if (queued) return;
+    queued = true;
+    queueMicrotask(() => {
+      queued = false;
+      renderHomeEnhancements();
+      normalizeLabels();
+    });
+  });
+  targets.forEach((target) => observer.observe(target, { childList: true, subtree: true }));
+}
+
 bindEnhancements();
 syncSuitaControls();
 renderHomeEnhancements();
 updateSearchSummary();
 normalizeLabels();
+observeHomeRerenders();
