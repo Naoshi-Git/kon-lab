@@ -1,0 +1,135 @@
+name: Deploy PR Pages preview
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+    paths:
+      - "campus-bus/**"
+      - ".github/workflows/pr-pages-preview.yml"
+
+permissions:
+  contents: write
+  deployments: write
+
+concurrency:
+  group: pr-pages-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  PREVIEW_PATH: pr-preview/pr-${{ github.event.pull_request.number }}
+  PREVIEW_URL: https://naoshi-git.github.io/kon-lab/pr-preview/pr-${{ github.event.pull_request.number }}/
+
+jobs:
+  deploy:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    environment:
+      name: pr-preview-${{ github.event.pull_request.number }}
+      url: ${{ env.PREVIEW_URL }}
+
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Checkout Pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: pages
+          fetch-depth: 0
+
+      - name: Validate bus application
+        run: |
+          test -f source/campus-bus/index.html
+          test -f source/campus-bus/ui-v2.css
+          test -f source/campus-bus/ui-v3.css
+          test -f source/campus-bus/data/location-points.mjs
+          node --check source/campus-bus/src/search-engine.mjs
+          node --check source/campus-bus/src/app.mjs
+          node --check source/campus-bus/src/enhancements.mjs
+          node --check source/campus-bus/src/features-v3.mjs
+          node --check source/campus-bus/data/location-points.mjs
+          node --test source/campus-bus/tests/*.test.mjs
+
+      - name: Prepare preview files
+        run: |
+          rm -rf "pages/${PREVIEW_PATH}"
+          mkdir -p "pages/${PREVIEW_PATH}"
+          rsync -a --delete --exclude='.git/' source/campus-bus/ "pages/${PREVIEW_PATH}/"
+          touch pages/.nojekyll
+
+      - name: Publish preview branch
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          cd pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "Preview already matches this pull request."
+            exit 0
+          fi
+
+          git commit -m "Deploy preview for PR #${PR_NUMBER}"
+
+          for attempt in 1 2 3; do
+            git pull --rebase origin gh-pages
+            if git push origin HEAD:gh-pages; then
+              exit 0
+            fi
+            sleep $((attempt * 3))
+          done
+
+          echo "Could not publish the preview after three attempts." >&2
+          exit 1
+
+      - name: Preview address
+        run: echo "Preview will be available at ${PREVIEW_URL}"
+
+  cleanup:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+
+      - name: Remove preview
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          rm -rf "pr-preview/pr-${PR_NUMBER}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No preview directory remains."
+            exit 0
+          fi
+
+          git commit -m "Remove preview for PR #${PR_NUMBER}"
+
+          for attempt in 1 2 3; do
+            git pull --rebase origin gh-pages
+            if git push origin HEAD:gh-pages; then
+              exit 0
+            fi
+            sleep $((attempt * 3))
+          done
+
+          echo "Could not remove the preview after three attempts." >&2
+          exit 1

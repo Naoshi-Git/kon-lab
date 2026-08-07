@@ -1,0 +1,37 @@
+.location-assist{margin:10px 16px 0;padding:12px;border:1px solid #d7d5ef;border-radius:14px;background:#f7f6fd;display:grid;gap:10px}.location-assist-copy{display:grid;gap:3px}.location-assist-copy strong{font-size:12px;color:var(--ou-950)}.location-assist-copy span{font-size:10px;line-height:1.5;color:var(--muted)}.location-assist-actions{display:flex;gap:7px;flex-wrap:wrap}.location-assist-actions button{border:1px solid #cfcced;background:#fff;color:var(--ou-900);border-radius:999px;padding:7px 11px;font-size:11px;font-weight:800}.stay-custom-input{margin-top:7px;width:100%;min-height:42px;border:1px solid var(--line);border-radius:11px;padding:8px 10px;font-size:16px;color:var(--ink);background:#fff}.result-stepper{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;margin:0 0 10px}.result-stepper button{min-height:40px;border:1px solid #d7d5ea;background:#fff;color:var(--ou-900);border-radius:11px;padding:0 11px;font-size:11px;font-weight:900}.result-stepper span{text-align:center;color:var(--muted);font-size:10px;font-weight:700}.timetable-route-controls{display:grid;gap:9px;margin-bottom:13px}.tt-campus-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:4px;border:1px solid var(--line);border-radius:14px;background:#f4f4f8}.tt-campus-tabs button{border:0;background:transparent;min-height:38px;border-radius:10px;color:var(--muted);font-size:12px;font-weight:900}.tt-campus-tabs button.is-active{background:#fff;color:var(--ou-950);box-shadow:0 3px 10px rgba(45,40,127,.08)}.tt-destination-row{display:flex;align-items:center;gap:8px}.tt-destination-row>span{color:var(--muted);font-size:10px;font-weight:800;flex:0 0 auto}.tt-destination-buttons{display:flex;gap:7px;flex-wrap:wrap}.tt-destination-buttons button{border:1px solid #d9d7eb;background:#fff;color:var(--ou-900);border-radius:999px;padding:7px 11px;font-size:11px;font-weight:900}.tt-destination-buttons button.is-active{background:var(--ou-900);border-color:var(--ou-900);color:#fff}.tt-suita-stop{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px}.tt-suita-stop span{font-size:10px;font-weight:800;color:var(--muted)}.tt-suita-stop select{min-width:0;width:100%;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);padding:8px 10px;font-size:13px;font-weight:800}.tt-current-status{min-height:16px;color:var(--muted);font-size:10px;line-height:1.45}.route-timetable-card{scroll-margin-top:110px}.route-timetable-card.is-next{border:2px solid var(--ou-700);background:linear-gradient(180deg,#fff,var(--ou-50));box-shadow:0 9px 23px rgba(45,40,127,.11)}.next-marker{display:inline-flex;margin:-1px 0 9px;padding:5px 8px;border-radius:999px;background:var(--ou-900);color:#fff;font-size:9px;font-weight:900}.tt-route-caption{margin:-2px 0 9px;color:var(--muted);font-size:10px;font-weight:700}.route-timetable-card .stop-time{min-width:74px}.feedback-card p{margin:0 0 10px;color:var(--muted);font-size:11px;line-height:1.6}.feedback-link{display:block;text-decoration:none;border-radius:12px;padding:12px;background:var(--ou-50);color:var(--ou-900);font-size:12px;font-weight:900}.feedback-link:active{transform:translateY(1px)}
+
+/* Timetable selector stays operable after automatic scrolling to the next bus. */
+#timetable-route-controls{
+  position:-webkit-sticky;
+  position:sticky;
+  top:calc(71px + env(safe-area-inset-top));
+  z-index:19;
+  margin:0 -16px 13px;
+  padding:8px 16px 10px;
+  background:rgba(255,255,255,.96);
+  -webkit-backdrop-filter:blur(16px);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid rgba(225,225,234,.92);
+  box-shadow:0 8px 18px rgba(31,27,99,.055);
+}
+#timetable-route-controls .tt-campus-tabs{margin:0}
+#timetable-route-controls .tt-current-status{margin-bottom:-2px}
+.route-timetable-card{scroll-margin-top:calc(190px + env(safe-area-inset-top))}
+
+/* iOS Safari: preserve pinch zoom globally but disable double-tap zoom on repeated controls. */
+.app-shell button,
+.app-shell a,
+#timetable-route-controls select{
+  touch-action:manipulation;
+}
+.result-stepper button,
+#timetable-route-controls button{
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.result-stepper button{min-height:44px;font-size:12px}
+.result-stepper button:active,#timetable-route-controls button:active{transform:scale(.985)}
+
+@media(max-width:380px){.location-assist{margin-left:14px;margin-right:14px}.result-stepper{gap:6px}.result-stepper button{padding:0 9px}.tt-destination-buttons button{padding-left:9px;padding-right:9px}.route-timetable-card .stop-time{min-width:68px}#timetable-route-controls{margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}}
