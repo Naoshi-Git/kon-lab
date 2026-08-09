@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>CryoARM 撮影一気通貫マニュアル | Kon-Lab</title>
+<style>
+:root{--bg:#f4f7fb;--surface:#fff;--surface2:#f8fafc;--text:#172033;--muted:#64748b;--line:#dce3ed;--accent:#175cd3;--accent2:#0b4aa2;--warn:#9a3412;--warnbg:#fff7ed;--ok:#166534;--code:#eef2f7;--shadow:0 10px 30px rgba(15,23,42,.08)}
+[data-theme="dark"]{--bg:#0f172a;--surface:#111c30;--surface2:#162238;--text:#e5edf8;--muted:#9fb0c7;--line:#2b3a52;--accent:#73a7ff;--accent2:#9bc0ff;--warn:#fdba74;--warnbg:#341b11;--ok:#86efac;--code:#1b2940;--shadow:none}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP","Hiragino Sans",Meiryo,sans-serif;line-height:1.78}
+#progress{position:fixed;top:0;left:0;height:3px;background:var(--accent);z-index:100;width:0}
+.topbar{position:sticky;top:0;z-index:80;height:58px;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 18px}
+.brand{font-weight:800;white-space:nowrap}.topbar .spacer{flex:1}button,.source-btn{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:9px;padding:8px 11px;font:inherit;font-size:13px;text-decoration:none;cursor:pointer}button:hover,.source-btn:hover{border-color:var(--accent)}
+.layout{display:grid;grid-template-columns:292px minmax(0,860px);gap:28px;max-width:1240px;margin:0 auto;padding:28px 22px 80px}
+.sidebar{position:sticky;top:86px;align-self:start;max-height:calc(100vh - 110px);overflow:auto;padding:2px 5px 30px}
+.search{width:100%;border:1px solid var(--line);background:var(--surface);color:var(--text);padding:10px 12px;border-radius:10px;margin-bottom:12px;font:inherit}
+.toc-title{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.08em;margin:10px 8px}
+.toc-link{display:block;text-decoration:none;color:var(--muted);border-left:2px solid transparent;padding:6px 9px;font-size:13px;line-height:1.4}.toc-link.level-3{padding-left:22px;font-size:12px}.toc-link:hover,.toc-link.active{color:var(--accent);border-left-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.hero{background:linear-gradient(145deg,var(--surface),var(--surface2));border:1px solid var(--line);border-radius:20px;padding:28px 30px;box-shadow:var(--shadow);margin-bottom:22px}
+.eyebrow{font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}h1{font-size:clamp(27px,4vw,40px);line-height:1.25;margin:.3em 0 .5em}.lead{color:var(--muted);margin:0 0 20px}
+.meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.meta-card{border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:10px 12px}.meta-k{display:block;font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.07em}.meta-v{display:block;font-size:13px;font-weight:700;margin-top:2px;overflow-wrap:anywhere}
+.notice{margin-top:18px;border-left:4px solid #f59e0b;background:var(--warnbg);color:var(--text);padding:12px 15px;border-radius:8px;font-size:13px}
+article{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:34px clamp(22px,5vw,54px);box-shadow:var(--shadow)}
+article h1{display:none}article h2{font-size:25px;line-height:1.35;margin:2.5em 0 .8em;padding-top:15px;border-top:1px solid var(--line)}article h2:first-of-type{margin-top:.5em;border-top:0}article h3{font-size:18px;margin:2em 0 .7em}article p,article li{font-size:15px}article strong{font-weight:800}article a{color:var(--accent)}article hr{border:0;border-top:1px solid var(--line);margin:36px 0}
+article blockquote{margin:20px 0;border-left:4px solid var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--surface));padding:14px 18px;border-radius:7px;color:var(--text)}article blockquote p{margin:.4em 0}
+code{font-family:"SFMono-Regular",Consolas,monospace;background:var(--code);padding:.15em .38em;border-radius:5px;font-size:.9em;overflow-wrap:anywhere}pre{overflow:auto;background:var(--code);padding:16px;border-radius:10px}pre code{padding:0}
+table{width:100%;border-collapse:separate;border-spacing:0;margin:18px 0 25px;font-size:14px;border:1px solid var(--line);border-radius:10px;overflow:hidden}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}th{background:var(--surface2);font-weight:800}tr:last-child td{border-bottom:0}
+ul,ol{padding-left:1.6em}li{margin:.28em 0}
+.footer{color:var(--muted);font-size:12px;padding:18px 5px;text-align:center}
+@media(max-width:950px){.layout{grid-template-columns:1fr;max-width:900px}.sidebar{position:relative;top:auto;max-height:none;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}.toc-links{max-height:260px;overflow:auto}.meta{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.topbar{padding:0 10px}.brand{font-size:13px}.hide-sm{display:none}.layout{padding:14px 10px 55px;gap:14px}.hero,article{border-radius:14px;padding:20px 17px}.meta{grid-template-columns:1fr 1fr}article h2{font-size:21px}table{display:block;overflow-x:auto;white-space:normal}}
+@media print{.topbar,.sidebar,#progress,.notice{display:none!important}body{background:white;color:black}.layout{display:block;padding:0;max-width:none}.hero,article{box-shadow:none;border:0;padding:0}article h2{break-after:avoid}a{color:black!important;text-decoration:none}}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar"><div class="brand">CryoARM Manual</div><span class="spacer"></span><a class="source-btn hide-sm" href="https://github.com/Naoshi-Git/kon-lab/blob/main/cryoarm-manual/manual.md">MD正本</a><a class="source-btn hide-sm" href="https://github.com/Naoshi-Git/Git-dir/pull/40">Review PR</a><button onclick="window.print()">印刷</button><button id="themeBtn" aria-label="テーマ切替">◐</button></header>
+<div class="layout">
+<aside class="sidebar"><input id="tocSearch" class="search" type="search" placeholder="目次を検索…"><div class="toc-title">CONTENTS</div><nav class="toc-links"><a class="toc-link level-2" href="#1-このマニュアルの使い方" data-title="1. このマニュアルの使い方">1. このマニュアルの使い方</a>
+<a class="toc-link level-3" href="#全体フロー" data-title="全体フロー">全体フロー</a>
+<a class="toc-link level-3" href="#先へ進まない条件" data-title="先へ進まない条件">先へ進まない条件</a>
+<a class="toc-link level-2" href="#2-sample名を登録する" data-title="2. sample名を登録する">2. Sample名を登録する</a>
+<a class="toc-link level-2" href="#3-前のserialem-sessionを閉じる" data-title="3. 前のserialem sessionを閉じる">3. 前のSerialEM sessionを閉じる</a>
+<a class="toc-link level-2" href="#4-当日の保存先を用意する" data-title="4. 当日の保存先を用意する">4. 当日の保存先を用意する</a>
+<a class="toc-link level-2" href="#5-serialemを起動する" data-title="5. serialemを起動する">5. SerialEMを起動する</a>
+<a class="toc-link level-2" href="#6-batch-grid-mapを取得する" data-title="6. batch grid mapを取得する">6. Batch Grid Mapを取得する</a>
+<a class="toc-link level-2" href="#7-観察するgridをloadする" data-title="7. 観察するgridをloadする">7. 観察するGridをLoadする</a>
+<a class="toc-link level-2" href="#8-atlasとsquare倍率を合わせる" data-title="8. atlasとsquare倍率を合わせる">8. AtlasとSquare倍率を合わせる</a>
+<a class="toc-link level-2" href="#9-撮影候補squareを登録する" data-title="9. 撮影候補squareを登録する">9. 撮影候補Squareを登録する</a>
+<a class="toc-link level-2" href="#10-batch-square-mapを取得する" data-title="10. batch square mapを取得する">10. Batch Square Mapを取得する</a>
+<a class="toc-link level-2" href="#11-low-dose-record-modeへ移る" data-title="11. low dose record modeへ移る">11. Low Dose Record modeへ移る</a>
+<a class="toc-link level-2" href="#12-low-dose各modeのbeamを合わせる" data-title="12. low dose各modeのbeamを合わせる">12. Low Dose各modeのbeamを合わせる</a>
+<a class="toc-link level-2" href="#13-slitを補正する" data-title="13. slitを補正する">13. slitを補正する</a>
+<a class="toc-link level-2" href="#14-square-mapとviewの位置を合わせる" data-title="14. square mapとviewの位置を合わせる">14. Square MapとViewの位置を合わせる</a>
+<a class="toc-link level-2" href="#15-eucentric-focusとzを合わせる" data-title="15. eucentric focusとzを合わせる">15. Eucentric focusとZを合わせる</a>
+<a class="toc-link level-2" href="#16-squareをscreeningする" data-title="16. squareをscreeningする">16. SquareをScreeningする</a>
+<a class="toc-link level-2" href="#17-multi-shotを設定する" data-title="17. multi-shotを設定する">17. Multi-shotを設定する</a>
+<a class="toc-link level-2" href="#18-hole-finderで撮影範囲を作る" data-title="18. hole finderで撮影範囲を作る">18. Hole Finderで撮影範囲を作る</a>
+<a class="toc-link level-2" href="#19-map-hole-vectorsとcombine-points" data-title="19. map hole vectorsとcombine points">19. Map Hole VectorsとCombine Points</a>
+<a class="toc-link level-2" href="#20-コマ-非点を補正する" data-title="20. コマ・非点を補正する">20. コマ・非点を補正する</a>
+<a class="toc-link level-2" href="#21-final-testshotでdoseとcamera-timingを決める" data-title="21. final testshotでdoseとcamera timingを決める">21. Final TestShotでDoseとCamera timingを決める</a>
+<a class="toc-link level-2" href="#22-camera-setupと保存条件を決める" data-title="22. camera setupと保存条件を決める">22. Camera Setupと保存条件を決める</a>
+<a class="toc-link level-2" href="#23-recordとviewの位置を手動で合わせる" data-title="23. recordとviewの位置を手動で合わせる">23. RecordとViewの位置を手動で合わせる</a>
+<a class="toc-link level-2" href="#24-final前の状態を戻す" data-title="24. final前の状態を戻す">24. Final前の状態を戻す</a>
+<a class="toc-link level-2" href="#25-run-final-acquisitionを設定する" data-title="25. run final acquisitionを設定する">25. Run Final Acquisitionを設定する</a>
+<a class="toc-link level-2" href="#26-start-runと初期確認" data-title="26. start runと初期確認">26. Start Runと初期確認</a>
+<a class="toc-link level-2" href="#27-途中停止-再開" data-title="27. 途中停止・再開">27. 途中停止・再開</a>
+<a class="toc-link level-2" href="#28-よくある異常と戻り先" data-title="28. よくある異常と戻り先">28. よくある異常と戻り先</a>
+<a class="toc-link level-2" href="#29-multi-grid-operationを使えない場合のfallback" data-title="29. multi grid operationを使えない場合のfallback">29. Multi Grid operationを使えない場合のfallback</a>
+<a class="toc-link level-2" href="#30-その日の記録" data-title="30. その日の記録">30. その日の記録</a>
+<a class="toc-link level-2" href="#31-根拠資料と版の優先順位" data-title="31. 根拠資料と版の優先順位">31. 根拠資料と版の優先順位</a>
+<a class="toc-link level-2" href="#32-発行前に残るversion-verification" data-title="32. 発行前に残るversion verification">32. 発行前に残るversion verification</a></nav></aside>
+<main>
+<section class="hero"><div class="eyebrow">Kon-Lab / Cryo-EM SOP</div><h1>CryoARM 撮影一気通貫マニュアル</h1><p class="lead">260809手書き最終版を第一根拠として整理した、Sample登録から自動撮影初期確認までの連続手順。</p><div class="meta">
+<div class="meta-card"><span class="meta-k">STATUS</span><span class="meta-v">DRAFT</span></div>
+<div class="meta-card"><span class="meta-k">UPDATED</span><span class="meta-v">2026-08-09</span></div>
+<div class="meta-card"><span class="meta-k">BASIS</span><span class="meta-v">260809 手書き最終版</span></div>
+<div class="meta-card"><span class="meta-k">SOURCE</span><span class="meta-v">SHA256 792c653b0dd0</span></div>
+</div><div class="notice"><strong>公開範囲:</strong> このURLはGitHub Pages上の公開サイトです。個人情報、認証情報、未公開研究データなどの機密情報は記載しないでください。</div></section>
+<article id="manual"><h1>CryoARM 撮影一気通貫マニュアル</h1>
+<blockquote>
+<p><strong>このMarkdownがWeb版の正本です。</strong> HTMLはこのファイルから自動生成し、HTMLを直接編集しません。</p>
+<p>2026-08-09以降は、後輩が追記した61ページの手書き最終版を現行ラボ運用の第一根拠とし、操作動画・元音声を実施順と理由のcross-check、公式PDF/PPTXを標準機能・troubleshooting・fallbackの補助として使用します。</p>
+</blockquote>
+<h2 id="1-このマニュアルの使い方">1. このマニュアルの使い方</h2>
+<p>この手順書は、CryoARMの操作訓練を受けた担当者が、<strong>Sample名登録から自動撮影開始後の初期確認までを上から順に進める</strong>ための実務マニュアルです。単なるボタン列ではなく、操作の目的、次へ進める状態、異常時の戻り先まで含めます。</p>
+<p>倍率、Dose、Defocusなど試料依存の値は固定しません。一方、260809手書き最終版で機体別・工程別に明示され、動画とも整合する値は「260809現行手書き基準」として記載します。SerialEM settingやscriptが更新された場合は実画面を優先し、本文を更新してください。</p>
+<h3 id="全体フロー">全体フロー</h3>
+<p><strong>Sample登録 → 前session終了 → SerialEM起動 → Batch Grid Map → Grid Load → Atlas–Square補正 → Square登録／Square Map → Low Dose beam → slit → Square–View補正 → Z → Screening → Multi-shot／Hole選択 → Coma/Stig → Final TestShot／Camera → Record–View補正 → Final Acquisition → 初期取得確認</strong></p>
+<h3 id="先へ進まない条件">先へ進まない条件</h3>
+<ul>
+<li>対象外GridをLoadした、またはGrid ID／Sample／Navigatorが一致しない</li>
+<li>見慣れない警告、既知警告と文言が異なる警告が出た</li>
+<li>Atlas–Square、Square–View、Record–Viewのずれが反復して収束しない</li>
+<li>AutoFocusが反復して失敗する</li>
+<li>TestShotのExposure／Frame timeとCamera Setupが一致しない</li>
+<li>Navigatorが進まない、または保存先へframeが作成されない</li>
+<li>scriptが想定外の状態で停止した</li>
+</ul>
+<p>既知popupは、<strong>全文・機体・SerialEM環境が一致する場合にだけ</strong>過去の回答を参照します。</p>
+<hr />
+<h1>Part I. 起動とAtlas</h1>
+<h2 id="2-sample名を登録する">2. Sample名を登録する</h2>
+<ol>
+<li>中央上モニタの <code>Sample Storage</code> を開く。</li>
+<li>自分のGridが格納されていることを確認する。</li>
+<li>対象行の <code>Cartridge information</code> を開き、<code>Sample</code> 欄へ試料名を入力する。</li>
+<li>Grid ID、Sample名、実物のマガジン位置を対応させて記録する。</li>
+</ol>
+<p>複数Gridの日は、このIDをMulti Grid Operations、Navigator、保存folderでも一貫して使います。</p>
+<h2 id="3-前のserialem-sessionを閉じる">3. 前のSerialEM sessionを閉じる</h2>
+<p>前利用者のSerialEMが残っている場合は先に終了します。Log保存を尋ねられたら <code>Yes</code>。既存Navigatorも、所有者や保存先が不明なまま上書きしません。</p>
+<h2 id="4-当日の保存先を用意する">4. 当日の保存先を用意する</h2>
+<p>Atlas／Navigator／Square Mapと、最終frameの保存先を混同しません。<code>Set Current Dir</code> で選ぶ親directoryの下に当日folderを作ります。</p>
+<p>260809手書き基準では、親directoryは機体ごとに分かれている記録があります（初号機 <code>Imai</code>、弐号機 <code>Kon-Lab</code>）。実際には当日の装置で現在使われている親directoryを確認してから作成します。</p>
+<h2 id="5-serialemを起動する">5. SerialEMを起動する</h2>
+<ol>
+<li>施設指定の <code>Zero-Fring</code>／<code>Zero_fring(e)</code> 系iconを起動する。</li>
+<li>JADAS、MDSが起動していればOFFにする。</li>
+<li>電顕本体でbeamが正常に出ていることを確認する。</li>
+<li>Pixel sizeを日次記録へ残す。</li>
+</ol>
+<p><strong>260809現行手書き基準のEmission目安</strong></p>
+<table>
+<thead>
+<tr>
+<th>機体</th>
+<th style="text-align:right">Emission目安</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>初号機</td>
+<td style="text-align:right">約10 µA</td>
+</tr>
+<tr>
+<td>弐号機</td>
+<td style="text-align:right">約6–7 µA</td>
+</tr>
+</tbody>
+</table>
+<p>beamが立ち上がっていない場合に限り、<code>Ten One Line Scripts &gt; Long Operation FF</code>（旧資料 <code>LongOperationFF0</code>）を使います。正常時に反射的に実行しません。</p>
+<p>起動時の既知popupには、<code>... is developed ...</code> → <code>Accept</code>、Dose modulation系 → <code>OK</code>、SerialEM CCD/COD系 → <code>OK/OFF</code> の過去記録がありますが、現在の全文が一致しない場合は停止して確認します。</p>
+<h2 id="6-batch-grid-mapを取得する">6. Batch Grid Mapを取得する</h2>
+<ol>
+<li><code>Setup_MultiGrid_Batch-GridMap</code> を実行する。</li>
+<li>本体倍率がAtlas用（260809手書き例 x50）へ変わったことを確認する。</li>
+<li>必要なら <code>Navigator &gt; Montaging &amp; Grids &gt; Multiple Grid Operations...</code> を開く。</li>
+<li>必要に応じて <code>Run Inventory</code> → <code>Get Names</code>。</li>
+<li>Atlasを取得するGridだけを選択する。</li>
+<li><code>Acquire Grid Maps</code> をON。</li>
+<li><code>Set States</code> から当日のGrid Map Imaging Stateを選ぶ。</li>
+<li><code>Run Script at end</code> は <code>AfterTakeGridMap</code>。</li>
+<li>不要なMedium Mag／Final Acquisitionが同時に有効でないことを確認する。</li>
+<li><code>Set Current Dir</code> で当日folderを指定し、<code>Start Run</code>。</li>
+</ol>
+<p><strong>260809現行手書き基準のGrid Map用CL</strong></p>
+<table>
+<thead>
+<tr>
+<th>機体</th>
+<th style="text-align:right">CL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>初号機</td>
+<td style="text-align:right">200 µm</td>
+</tr>
+<tr>
+<td>弐号機</td>
+<td style="text-align:right">Open</td>
+</tr>
+</tbody>
+</table>
+<p>script／EMPropertiesが自動設定する構成では、実行後の本体表示で確認します。Atlas取得中に手動で別GridをLoadしません。</p>
+<p>中断したMulti-grid sessionを再開する場合は <code>Navigator &gt; Montaging &amp; Grids &gt; Reopen Multi-grid Session</code> から当日folderの <code>.adoc</code> を開き、Grid／Navigator／保存先を再確認します。</p>
+<hr />
+<h1>Part II. Grid Load、Atlas–Square、Square Map</h1>
+<h2 id="7-観察するgridをloadする">7. 観察するGridをLoadする</h2>
+<ol>
+<li>Atlasを比較して観察Gridを決める。</li>
+<li>Sample Storage／Stageで対象Gridを選ぶ。</li>
+<li>Cartridge Controlの <code>Load</code> を実行する。</li>
+<li>Load中の点滅が消え、交換が完了するまで待つ。</li>
+<li>Multi Grid Operationsでも同じIDを選び <code>Open Nav</code>。</li>
+<li>NavigatorがそのGridの <code>.nav</code> に切り替わりAtlasを表示できることを確認する。</li>
+</ol>
+<p><strong>Stage上のGrid、Sample名、Multi Grid OperationsのID、Navigatorの4者が一致してから次へ進みます。</strong></p>
+<h2 id="8-atlasとsquare倍率を合わせる">8. AtlasとSquare倍率を合わせる</h2>
+<ol>
+<li>Atlas上で、Square倍率でも再同定できる破れ・汚れ・形の特徴を選ぶ。</li>
+<li>Marker → <code>Add Marker</code> で登録する。本撮影候補を不用意に照射しないよう、可能なら優先度の低い周辺特徴を使う。</li>
+<li><code>CallSquareMag</code> を実行する。</li>
+<li>登録pointを選び <code>Go to XY</code>。</li>
+<li>ステージ停止後、必要なときだけgun valveを開き、蛍光板／Screen Cameraとステージコントローラで特徴を中央付近へ寄せる。</li>
+<li><code>View</code> で撮影し、同じ特徴へMarkerを置く。</li>
+<li>Navigatorで元のAtlas pointを選び <code>Shift to Marker</code>。</li>
+<li><code>OK</code> 後、同じpointへ再度 <code>Go to XY</code> → <code>View</code>。</li>
+<li>同一特徴が再現するまで反復する。</li>
+</ol>
+<p>印刷本文x150、動画／過去手書きx200の例があるため、<strong>倍率値ではなく現在のImaging Stateと本体倍率を正本</strong>とします。</p>
+<p>260809原本の当時画面では <code>Which item to shift</code> と <code>Saving shift for reuse</code> はともに中央の選択肢を使う記録ですが、現行dialogの文言を読んで意味が一致することを確認します。</p>
+<p><code>AdjustFOV_byDrag-FLA</code> を正しく校正・使用している環境では自動化できます。自動補正後に同じ補正を重複して手動適用しません。</p>
+<h2 id="9-撮影候補squareを登録する">9. 撮影候補Squareを登録する</h2>
+<ol>
+<li>Atlasを表示し <code>Add Points</code> で候補Squareを選ぶ。</li>
+<li>明らかな不良Squareを除き、後から追加するより最初は多めに確保する。</li>
+<li>ステージ移動が少なくなるよう、一筆書きに近い順で選ぶ。</li>
+<li><code>Stop Adding</code>。</li>
+<li>対象itemをまとめて選択し <code>Acquire</code> を付ける。</li>
+<li>Navigatorに <code>A</code> が付いたことを確認する。</li>
+</ol>
+<p><strong>最初と最後には、Holeが明瞭で比較的きれいなSquareを残します。</strong> 後段のLow Dose beam、AutoFocus、Coma/Stig、Record–View調整に使います。</p>
+<h2 id="10-batch-square-mapを取得する">10. Batch Square Mapを取得する</h2>
+<p>Multi Grid Operationsで対象Gridを選び、<code>Acquire Medium Mag Maps</code> のみを有効にします。<code>CallSquareMag</code>、当日のStates、<code>Set Mapping Parameters</code> を確認します。</p>
+<p><strong>Square Map開始前の260809現行手書き基準</strong></p>
+<ul>
+<li><code>Camera &amp; Script &gt; Setup &gt; Record</code></li>
+<li>Exposure time: <strong>1.0 s</strong></li>
+<li>Dose Fractionation mode: <strong>OFF</strong></li>
+</ul>
+<p>これはSquare Map取得用であり、後の本撮影Camera条件とは別です。</p>
+<p><code>Acquire at Items</code> は以下を基準とします。</p>
+<ul>
+<li><code>Run Script before Action</code> → <code>BeforeTakeSquares</code></li>
+<li><code>How often run task</code> → <code>Only at start of group</code></li>
+<li><code>Run Script after Action</code> → <code>AfterTakeSquare</code></li>
+<li><code>Close gun valve at end</code> → ON</li>
+</ul>
+<p>script名が変更されている場合は推測せず、現行script一覧を確認します。<code>Start Run</code> 後、全 <code>A</code> itemにSquare Mapが作成されNavigatorへ追加されたことを確認します。</p>
+<hr />
+<h1>Part III. Low Dose、slit、Square–View、Z</h1>
+<h2 id="11-low-dose-record-modeへ移る">11. Low Dose Record modeへ移る</h2>
+<p>最後に残した軸合わせ用Squareへ移動してから <code>CallRecordMag</code> を実行し、Low Dose ControlのRecord modeへ移ります。</p>
+<p><strong>260809現行手書き基準のRecord用CL</strong></p>
+<table>
+<thead>
+<tr>
+<th>機体</th>
+<th style="text-align:right">CL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>初号機</td>
+<td style="text-align:right">50 µm</td>
+</tr>
+<tr>
+<td>弐号機</td>
+<td style="text-align:right">5 µm</td>
+</tr>
+</tbody>
+</table>
+<p>script／EMProperties実行後、本体表示で意図したapertureになったことを確認します。</p>
+<h2 id="12-low-dose各modeのbeamを合わせる">12. Low Dose各modeのbeamを合わせる</h2>
+<p>強い電子線を使うため、観察していない時間はgun valveを開けたままにしません。</p>
+<ol>
+<li>Recordでgun valveを開き、蛍光板を下ろす。</li>
+<li>本体 <code>SHIFT X/Y</code> でRecord beamを中央へ合わせる。</li>
+<li><code>View</code> → <code>Focus</code> → <code>Trial</code> と切り替え、各beam位置を確認する。</li>
+<li>View／Focus／Trialがずれているmodeでは <code>Additional beam shift</code> をONにしてX/Yを調整する。</li>
+<li>調整後は <code>Additional beam shift</code> をOFFへ戻す。</li>
+<li><code>Rec → View → Focus → Trial</code> を2–3周し、切替えても再現することを確認する。</li>
+<li>最後はRecordへ戻す。</li>
+</ol>
+<h2 id="13-slitを補正する">13. slitを補正する</h2>
+<ol>
+<li>蛍光板を下ろす。</li>
+<li>slitを <code>In</code>。</li>
+<li><code>Multi Function</code> を押す。</li>
+<li>本体モニタを見ながらノブを反時計回りへ回し、影を出す。</li>
+<li>時計回りへ戻し、影が完全に消える位置を探す。</li>
+<li><strong>影が消えた位置からさらに時計回りへ10ノッチ</strong>。</li>
+<li>gun valveを閉じ、蛍光板を上げる。</li>
+<li>slit <code>Width</code>（eV）を記録する。</li>
+</ol>
+<h2 id="14-square-mapとviewの位置を合わせる">14. Square MapとViewの位置を合わせる</h2>
+<ol>
+<li>Square Map上でViewでも再同定できる汚れ／edgeを選びMarker → <code>Add Marker</code>。</li>
+<li>大きな移動時はgun valveを閉じ、<code>Go to XY/XYZ</code>。</li>
+<li>Viewで同じ特徴を撮影しMarkerを置く。</li>
+<li>Navigatorで元のSquare Map pointを選び <code>Shift to Marker</code>。</li>
+<li>更新pointへ再移動しViewで確認する。</li>
+<li>同一特徴が再現するまで反復する。</li>
+</ol>
+<p>手書きではx150→x8000と表現されますが、成功条件は倍率値ではなく<strong>Square Mapで指定した地点がViewで再現すること</strong>です。</p>
+<h2 id="15-eucentric-focusとzを合わせる">15. Eucentric focusとZを合わせる</h2>
+<ol>
+<li><code>YoneoHole</code>／現行Hole認識補助が起動していることを確認する。</li>
+<li>clean Holeを <code>Shift + 右ドラッグ</code> で画面中央へ移動する。</li>
+<li>ViewでHole全体が中央にあることを確認する。</li>
+<li><code>Ten One Line Scripts &gt; Set Eucentric Focus</code>。</li>
+<li><code>Auto Focus Script(s)</code> を実行する。</li>
+<li>Logの完了表示を確認する。</li>
+</ol>
+<p><strong>260809現行手書き基準では、本体ZとNavigator Zが15 µm以上異なる場合、対象Square群へ <code>Update Z</code> を反映します。</strong> 15 µm未満でも像が明らかに外れる場合は値だけで判断せず再評価します。</p>
+<p>終了時は必要なapertureを戻し、gun valveを閉じます。AutoFocus失敗時は連打せず、Hole中央、YoneoHole、View像、Zの大外れを確認してから再試行します。</p>
+<hr />
+<h1>Part IV. Screeningと撮影点作成</h1>
+<h2 id="16-squareをscreeningする">16. SquareをScreeningする</h2>
+<ol>
+<li>Navigatorから調べるSquareを開く。</li>
+<li>Holeへ <code>Add at Marker</code>。</li>
+<li>長距離移動中は不要照射を避け、移動後に観察に必要な状態へする。</li>
+<li>View、必要に応じてAutoFocusを行う。</li>
+<li>氷厚、Hole形状、汚れ、粒子／TMV等を確認する。</li>
+<li>見たい領域は <code>Shift + 右ドラッグ</code> で中央へ移す。</li>
+<li>Square番号・Hole番号を記録する。</li>
+</ol>
+<p>Screeningでも <code>Test Shot</code> を使いますが、ここではSquare／Hole評価用です。<strong>Exposure timeを反映するpopupはScreening中は <code>No</code>。</strong> 後段のFinal TestShotと混同しません。</p>
+<h2 id="17-multi-shotを設定する">17. Multi-shotを設定する</h2>
+<p><code>Navigator &gt; Montaging &amp; Grids &gt; Set Multi-shot Parameter</code> を開きます。</p>
+<p><strong>260809現行手書き基準の標準配置</strong></p>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th style="text-align:right">基準</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 Hole内のshot数</td>
+<td style="text-align:right"><strong>3</strong></td>
+</tr>
+<tr>
+<td>main ring distance</td>
+<td style="text-align:right"><strong>0.38–0.40 µm</strong></td>
+</tr>
+<tr>
+<td>multi-hole</td>
+<td style="text-align:right"><strong>5 × 5</strong></td>
+</tr>
+<tr>
+<td>circle diameter</td>
+<td style="text-align:right"><strong>0.7 µm</strong></td>
+</tr>
+</tbody>
+</table>
+<p>最新原本の3-shot記載はFinal直前の <code>25 holes × 3 shots = 75</code> の確認メモとも整合します。Hole径、beam径、試料条件を変える場合は意図的に変更し、日次記録へ残します。</p>
+<p>Hole vector関連popupは260809手書きでは <code>Yes Always</code> の記録があります。文言が異なる場合は確認します。</p>
+<h2 id="18-hole-finderで撮影範囲を作る">18. Hole Finderで撮影範囲を作る</h2>
+<ol>
+<li>対象Squareを選択する。</li>
+<li>必要なら <code>Add Polygon</code> で撮影領域を囲う。描画を戻すときはBackspace。</li>
+<li><code>Navigator &gt; Montaging &amp; Grids &gt; Find Holes in Regular Grid</code>。</li>
+<li><code>Find Holes</code>。</li>
+<li>Hole格子に合うようdiameter、spacing、edge、intensity／cutoff等を調整する。</li>
+<li>画像上で採用・除外結果を確認する。</li>
+<li><code>Make Navigator Points</code>。</li>
+</ol>
+<p>旧手書きのCombiner <code>&lt;15 holes</code> → <code>3</code> は260809最終版では現行標準として再掲されていないため、<strong>旧値3を必須値として持ち越しません。</strong></p>
+<h2 id="19-map-hole-vectorsとcombine-points">19. Map Hole VectorsとCombine Points</h2>
+<ol>
+<li>Multiple Record Setupの <code>Map Hole Vectors</code> を実行する。</li>
+<li>Hole Finder格子とmulti-hole vectorを対応させる。</li>
+<li><code>Navigator &gt; Montaging &amp; Grids &gt; Combine Points for Multishot</code>。</li>
+<li><code>In same group as current point</code> の状態で <code>Combine Points</code>。</li>
+<li>edge、汚れ、厚すぎる領域、不自然なpointを除外する。</li>
+<li><strong>Squareごとに <code>Navigator &gt; Save</code>。</strong></li>
+<li>全Square終了後 <code>Count Movie records</code>／同等scriptを実行し、Hole数とmovie数をLogから記録する。</li>
+</ol>
+<p>標準5×5×3構成なら1 groupは75撮影ですが、欠損Holeや除外があるため実際のLogを正本とします。</p>
+<hr />
+<h1>Part V. 光学補正、Dose、Camera、Record–View</h1>
+<h2 id="20-コマ-非点を補正する">20. コマ・非点を補正する</h2>
+<ol>
+<li>最初／最後に残したclean Squareへ移る。</li>
+<li>薄い氷でHoleを認識できる領域を選ぶ。</li>
+<li>必要ならAutoFocusでZを合わせる。</li>
+<li>ScreeningでDefocusを大きくしていた場合は補正用へ戻す。260809手書きでは <code>Focus/Tune &gt; Set Target</code> の -1.4 µm例がある。</li>
+<li>beam centeringを再確認する。</li>
+<li><code>FullAutoAlignComaAndStig</code> または <code>AlignComaAndStig</code> を実行する。</li>
+<li>補正後に <code>Rec → View → Focus → Trial</code> を再確認し、特にTrialがRecord中心から外れていないことを見る。</li>
+</ol>
+<p>自動補正が止まる場合は公式手順の <code>Correct Astigmatism by CTF</code>／<code>Coma-free Alignment by CTF</code> へ戻ります。成立しないまま本撮影へ進みません。</p>
+<h2 id="21-final-testshotでdoseとcamera-timingを決める">21. Final TestShotでDoseとCamera timingを決める</h2>
+<p>このTestShotはScreening用ではなく、<strong>本撮影DoseとCamera timingを決める最終測定</strong>です。</p>
+<ol>
+<li>膜がなく真空になっている領域へ移動する。</li>
+<li>Viewで何もないことを確認する。</li>
+<li><code>Test Shot</code> を実行する。</li>
+<li>Logから以下を記録する。
+<ul>
+<li>Total dose</li>
+<li>Dose per frame</li>
+<li>Exposure time</li>
+<li>Frame time</li>
+<li>Number of frames</li>
+<li>Ice thickness（表示される場合）</li>
+</ul>
+</li>
+<li>Exposure time／Frame time反映popupは <strong><code>Yes</code></strong>。</li>
+</ol>
+<p>Dose targetは試料固有です。過去動画の80 e-/Å²、2 e-/Å²/frameは実施例に留めます。</p>
+<h2 id="22-camera-setupと保存条件を決める">22. Camera Setupと保存条件を決める</h2>
+<p><code>Camera &amp; Script &gt; Setup &gt; Record</code> を開きます。</p>
+<ul>
+<li>Dose Fractionation mode → <strong>ON</strong></li>
+<li>Save frames → <strong>ON</strong></li>
+<li>Exposure time → Final TestShotと一致</li>
+<li>Frame time → Final TestShotと一致</li>
+</ul>
+<p>Processing表示と保存frameの正規化状態は別に確認します。公式画面に <code>Gain Normalized</code> と <code>Save unnormalized frames even if Gain Normalized is selected</code> の組合せがあるため、Processing欄だけから保存frameを推定しません。</p>
+<p><code>Set File Options</code> で保存形式と解析pipelineの整合を確認します。<strong>260809現行手書き基準ではBase nameは <code>img</code> のまま変更しません。</strong></p>
+<p>保存先はFinal Data Parameters側の「Grid directory配下にframe directoryを作る」方式を標準とし、別の手動 <code>Micrographs</code> 方式を同一Run内で混在させません。</p>
+<h2 id="23-recordとviewの位置を手動で合わせる">23. RecordとViewの位置を手動で合わせる</h2>
+<p><strong>Coma/Stig後にAutoではなく手動で位置合わせします。</strong></p>
+<ol>
+<li>Record modeで目標物を中央へ置く。</li>
+<li><code>Preview</code> でRecord条件の画像を取得する。</li>
+<li><code>View</code> を撮り、同じ特徴の位置を比較する。</li>
+<li>View像がずれていれば、<strong>Shiftを押さずに右ドラッグ</strong>してPreviewで見えた中心へ動かす。</li>
+<li><code>Offsets for: View</code> の <code>Set</code> で保存する。</li>
+<li>View → Previewを再取得し、ずれが許容範囲に収まるまで反復する。</li>
+</ol>
+<p>ここでの右ドラッグはViewのImage Shift／offset調整です。<code>Shift + 右ドラッグ</code> のstage移動と混同しません。</p>
+<hr />
+<h1>Part VI. Final Data Collection</h1>
+<h2 id="24-final前の状態を戻す">24. Final前の状態を戻す</h2>
+<p>Final直前に一連で再確認します。</p>
+<ul>
+<li>Record用CL（260809基準: 初50 µm／弐5 µm）</li>
+<li>Rec／View／Focus／Trialのbeam位置</li>
+<li>Record–View offset</li>
+<li>slit補正</li>
+<li>aperture状態</li>
+<li>Final TestShotとCameraのExposure／Frame time</li>
+<li>Navigator保存</li>
+</ul>
+<h2 id="25-run-final-acquisitionを設定する">25. Run Final Acquisitionを設定する</h2>
+<p>Multi Grid Operationsで <code>Run Final Acquisition</code> をONにし、対象Gridを確認します。<code>Set Final Data Parameters</code> で少なくとも以下を確認します。</p>
+<ul>
+<li><code>Make frame directories under grid directories</code> → ON</li>
+<li>Multiple Recordsのvector source → <code>Setting for each grid</code></li>
+<li>Map Hole Vectorsの扱いが各Grid設定と一致</li>
+</ul>
+<p><code>Acquire at Items</code> では <code>Run script</code> をONにし、<strong><code>SPADataCollection</code></strong> を選びます。<code>SPADataCollection_Screening</code> と取り違えません。</p>
+<p>Manage Nitrogen、Flash FEG、ZLP alignmentを使用します。260809資料の印刷基準ではFlash FEG／ZLP関連は<strong>360–480 min程度</strong>のレンジで記載されていますが、長時間Run条件に依存するため当日の施設設定を優先します。</p>
+<p>Defocus cycleは試料固有です。260809資料例 -1〜-2 µm／10 steps、動画別例 -0.7〜-2.2 µm／16 steps。<strong>試料計画で決めた範囲とstepを入力し、過去値を既定値にしません。</strong></p>
+<h2 id="26-start-runと初期確認">26. Start Runと初期確認</h2>
+<ol>
+<li><code>Start Run</code> 直前にもう一度beam centeringを確認する。</li>
+<li>Objective aperture関連popupは、260809現行手書きでは <code>Yes</code> の運用記録。ただし完全に同じprompt／機体状態か確認する。</li>
+<li>Start Run後、Navigator item、Log、frame directoryを同時に見る。</li>
+<li>標準5×5×3構成では <strong>25 holes × 3 = 75 acquisitions</strong> が最初の完全なgroupの目安。</li>
+<li>欠損・除外がある場合は実際のitem数を正本とする。</li>
+<li><strong>最初の1 group相当が正常に進み、Log／Navigatorに致命的エラーがなく、frame保存を確認してから装置を離れる。</strong></li>
+</ol>
+<p><code>Start Run</code> を押しただけでは撮影開始完了とみなしません。</p>
+<h2 id="27-途中停止-再開">27. 途中停止・再開</h2>
+<p>通常停止は <code>End Nav</code>／<code>End Navigator</code> を使い、現在処理が安全に止まるのを待ちます。STOPを使った場合を含め、停止後は <strong><code>SetImageShift 0 0</code></strong> を実行してImage Shiftを基準へ戻します。</p>
+<p>停止時刻、最後に正常取得したitem、未完了item、Log、frame保存状態、Navigator保存状態を記録します。再開時は重複取得を避けます。</p>
+<p>Multi-grid session自体を閉じた後は <code>Reopen Multi-grid Session</code> から当日 <code>.adoc</code> を開き、Grid／Navigator／保存先を再確認します。</p>
+<hr />
+<h1>Part VII. 異常時とfallback</h1>
+<h2 id="28-よくある異常と戻り先">28. よくある異常と戻り先</h2>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>戻り先・確認</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Multi Grid Operationsが動かない</td>
+<td>Grid名先頭の <code>N</code>／<code>n</code> を確認。直らなければ非Multi-grid fallback</td>
+</tr>
+<tr>
+<td>Image Shift撮影でHoleが徐々にずれる</td>
+<td>Hole vector精密化／<code>Step To &amp; Adjust IS</code></td>
+</tr>
+<tr>
+<td>beam edgeが見える</td>
+<td>Record／Trial beam center、必要なら <code>CenterBeam</code>／beam-shift refinement</td>
+</tr>
+<tr>
+<td>Logに赤字</td>
+<td>赤字全般を無視しない。初見、Navigator停止、frame欠損を伴えば停止</td>
+</tr>
+<tr>
+<td>UltraFoilでSkip頻発</td>
+<td>OL apertureの挿入・中心合わせを検討。施設運用を確認</td>
+</tr>
+<tr>
+<td>AutoFocus／AlignToHole不安定</td>
+<td>Find One Hole、Template Match、YoneoHole。YoneoHole使用時は起動状態確認</td>
+</tr>
+</tbody>
+</table>
+<p>公式資料には20時間超の長時間撮影でOL aperture推奨の記載があります。現行施設運用を確認して実施します。</p>
+<h2 id="29-multi-grid-operationを使えない場合のfallback">29. Multi Grid operationを使えない場合のfallback</h2>
+<p>標準workflowが正常動作しない場合だけ切り替えます。</p>
+<ol>
+<li>Navigatorを開く。</li>
+<li><code>CallAtlasMag</code> → Screen Cameraでbeam center → Full Montage → <strong>Montage ControlのStart</strong>。</li>
+<li>Square候補をAcquireにし、<code>New file at item</code>、File Properties、Save Asを設定。</li>
+<li><code>Navigator &gt; Acquire at Items</code> で <code>BeforeTakeSquares</code>／<code>AfterTakeSquare</code> を設定してSquare Mapを作る。</li>
+<li>通常手順と同様にHole Finder、Coma/Stig、TestShot、Camera、CL／beam／Record–Viewを確認。</li>
+<li><code>Acquire at Items</code> のGOで収集する。</li>
+</ol>
+<p>fallbackへ移ったことを日次記録に残し、標準Multi-grid手順と設定を混在させません。</p>
+<hr />
+<h1>Part VIII. 記録と版管理</h1>
+<h2 id="30-その日の記録">30. その日の記録</h2>
+<p>最低限、以下を残します。</p>
+<ul>
+<li>実施日、担当者、機体</li>
+<li>Grid ID／Sample</li>
+<li>Pixel size</li>
+<li>SerialEM setting、主要script版</li>
+<li>Atlas／Navigator／frame保存先</li>
+<li>Atlas／Square／View／Record倍率</li>
+<li>CL／Objective aperture、slit Width</li>
+<li>Z／Update Z</li>
+<li>Multi-shot配置、Hole／movie数</li>
+<li>Coma/Stig結果</li>
+<li>TestShot Dose、Exposure／Frame time</li>
+<li>Defocus range</li>
+<li>Camera変更点</li>
+<li>開始時刻</li>
+<li>警告と対処</li>
+</ul>
+<p>既定から変更した値は、「何を」「なぜ」変えたかも残します。</p>
+<h2 id="31-根拠資料と版の優先順位">31. 根拠資料と版の優先順位</h2>
+<p>2026-08-09版の優先順位は以下です。</p>
+<ol>
+<li>260809手書き最終版PDF</li>
+<li>操作動画／元音声</li>
+<li>公式印刷本文／旧公式PDF／PPTX</li>
+<li>Version2／Version1手書き</li>
+<li>Gemini MD／自動文字起こし</li>
+</ol>
+<p>最新版でも、Screening中のgun valve開閉順のように動画・不要照射回避の運用と整合しない箇所は文字どおり採用していません。また、旧版のShift+H batch処理は最新原本で大きく取消されているためdefault workflowから外しています。</p>
+<h2 id="32-発行前に残るversion-verification">32. 発行前に残るversion verification</h2>
+<p>workflow自体の再構築ではなく、現行実機で以下だけを確認します。</p>
+<ul>
+<li>Square Imaging State x150／x200</li>
+<li><code>Shift to Marker</code> dialogの現行文言</li>
+<li>初号機／弐号機のCL実表示</li>
+<li>Long Operation FF、AutoFocus、Coma/Stig、SPADataCollectionの現行名称</li>
+<li>Final Data Parametersのoption文言</li>
+<li>Objective aperture popup全文</li>
+<li>Final Run後のLog／Navigator／frame保存</li>
+</ul>
+<p>これらが確認できるまではstatusを <code>draft</code> とします。</p>
+</article>
+<div class="footer">Markdown is canonical · generated 2026-08-09 08:35 UTC · source 792c653b0dd0 · Naoshi-Git/Git-dir#40</div>
+</main></div>
+<script>
+const root=document.documentElement;const saved=localStorage.getItem('cryo-theme');if(saved)root.dataset.theme=saved;
+document.getElementById('themeBtn').onclick=()=>{const next=root.dataset.theme==='dark'?'light':'dark';root.dataset.theme=next;localStorage.setItem('cryo-theme',next)};
+const search=document.getElementById('tocSearch');search.addEventListener('input',()=>{const q=search.value.trim().toLowerCase();document.querySelectorAll('.toc-link').forEach(a=>{a.style.display=(!q||a.dataset.title.includes(q))?'block':'none'})});
+const links=[...document.querySelectorAll('.toc-link')];const heads=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){links.forEach(a=>a.classList.remove('active'));const a=document.querySelector(`.toc-link[href="#${e.target.id}"]`);if(a)a.classList.add('active')}})},{rootMargin:'-18% 0px -72% 0px'});heads.forEach(h=>obs.observe(h));
+window.addEventListener('scroll',()=>{const h=document.documentElement;const max=h.scrollHeight-h.clientHeight;document.getElementById('progress').style.width=(max?100*h.scrollTop/max:0)+'%'},{passive:true});
+</script>
+</body></html>
