@@ -24,3 +24,7 @@ Responsive layout checked in Chromium at iPhone 17-equivalent 402×874 / 874×40
 
 
 
+
+## Landing page
+
+Product introduction: [landing.html](landing.html). Japanese editorial copy with the clock's black/off-white identity and an interactive accelerated Stay-cycle demonstration. Emphasizes interrupting the habit of seeking the next stimulus through a visible five-minute cycle, without medical or efficacy claims. Clock entry stays at ./; the landing page and help page are separate. No generated bitmap imagery is needed; the actual digit and ring visual language is the main asset.

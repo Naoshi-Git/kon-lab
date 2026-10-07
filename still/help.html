@@ -17,10 +17,11 @@
 <p>今日の記録は離脱によるリセット後も残ります。日付をまたぐと、端末の現地時刻で日ごとに分けます。</p>
 <h2>画面を保つ・保存</h2><p>右上の太陽のアイコンをタップすると自動消灯の抑制を要求します。中央が塗りつぶされていれば有効です。利用できるかは端末・ブラウザ・省電力設定に依存します。Safariの共有から「ホーム画面に追加」すると、独立した画面として使えます。</p><p>集中時間の設定と滞在記録は、この端末のブラウザ内だけに保存します。広告・解析・データ送信はありません。ブラウザの保存データを消すと記録も消えます。再読み込みではFOCUSとMEASUREは初期化、STAYは30秒以内なら復元します。</p><p class="note">使い方を別タブで読む間も時計ページの離脱として扱われます。30秒を超えると、本番のSTAYはリセットされます。上の練習UIは本番の記録を変更しません。</p>
 <h2>キーボード</h2><p>FOCUS・MEASUREはEnter／Spaceで操作。停止中のDelete／Backspaceでリセット。FOCUS開始前は↑／↓で分数を変更できます。</p>
-<footer><a href="./">時計を開く</a></footer>
+<footer><a href="./">時計を開く</a> · <a href="landing.html">stillについて</a></footer>
 <script>
 const timeline=document.getElementById('timeline'), frame=document.getElementById('demo');
 function preview(){const m=Number(timeline.value);document.getElementById('time').textContent=m>=60?`${Math.floor(m/60)}h ${Math.floor(m%60)}m`:`${m}m`;frame.contentWindow.postMessage({type:'still-demo-stay',minutes:m},'*');const laps=Math.floor(m/30),dots=Math.floor(m/5)%6,filling=Math.floor(m/5)%2===0;document.getElementById('explanation').textContent=`${laps>0?`${laps}個の周回印と、`:''}${dots}個のドット。${filling?'この5分はリングが満ちる':'この5分はリングが消える'}区間です。${m>=30?'6個のドットが周回印へまとまり、次のサイクルが始まっています。':''}`;}
 timeline.addEventListener('input',preview);document.querySelectorAll('[data-minute]').forEach(button=>button.addEventListener('click',()=>{timeline.value=button.dataset.minute;preview();}));frame.addEventListener('load',preview);
 </script></body></html>
+
 
