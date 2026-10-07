@@ -104,3 +104,28 @@ footer{padding:0 calc(var(--safe-right) + 24px) calc(var(--safe-bottom) + 12px) 
 #awake svg{width:24px;height:24px;fill:none;stroke:#939087;stroke-width:1.3;stroke-linecap:round}
 #awake[aria-pressed=true] svg{stroke:var(--paper)}
 #awake[aria-pressed=true] svg circle{fill:var(--paper)}
+/* Embedded previews share the real application, without an inner scroll surface. */
+.demo{height:290px;min-height:0;overflow:hidden}
+.demo main{flex:none;height:290px;padding:24px 10px;gap:24px}
+.demo header,.demo footer,.demo .clock{display:none!important}
+.demo .lap-badge{position:static;margin-top:9px}
+.demo-clock{height:520px;--orb-size:clamp(88px,18vw,112px)}
+.demo-clock header{display:flex!important;padding:16px 20px 0;min-height:60px}
+.demo-clock .clock{display:block!important}
+.demo-clock main{height:460px;padding:18px 16px;gap:24px}
+.demo-clock .modes{gap:clamp(12px,4vw,32px)}
+.demo-clock .mode{width:var(--orb-size)}
+.demo-clock .digits{font-size:clamp(68px,17vw,115px)}
+.demo-clock #date{font-size:10px;margin-bottom:20px}
+.demo-clock .wordmark{font-size:22px}
+.demo-single{height:310px;--orb-size:240px}
+.demo-single main{height:310px;padding:12px;gap:0;justify-content:flex-start}
+.demo-single #focus-mode,.demo-single #stopwatch-mode,.demo-single .record{display:none!important}
+.demo-single .mode{width:240px}
+.demo-single #stay .value{font-size:44px}
+.demo-single h2{margin-top:16px}
+@media(max-width:400px){.demo-clock .digits{font-size:22vw}.demo-clock #seconds{font-size:.43em}}
+html.demo-root{height:100%;overflow:hidden}
+.demo{height:100vh;min-height:0}
+.demo main{height:100vh}
+.demo-clock main{height:calc(100vh - 60px)}

@@ -28,3 +28,5 @@ Responsive layout checked in Chromium at iPhone 17-equivalent 402×874 / 874×40
 ## Landing page
 
 Product introduction: [landing.html](landing.html). Japanese editorial copy with the clock's black/off-white identity and an interactive accelerated Stay-cycle demonstration. Emphasizes interrupting the habit of seeking the next stimulus through a visible five-minute cycle, without medical or efficacy claims. Clock entry stays at ./; the landing page and help page are separate. No generated bitmap imagery is needed; the actual digit and ring visual language is the main asset.
+
+LP and help previews now embed the actual clock application. Demo state is isolated from stored records. Stay advances in real time after slider release; pointer dragging pauses it. A 29:30 shortcut makes the thirty-minute dot collection observable after thirty seconds. Embedded contexts have explicit viewport heights and no internal scroll surface.

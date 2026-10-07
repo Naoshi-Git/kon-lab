@@ -4,11 +4,11 @@
 </style></head><body>
 <h1>still.</h1><p>時計を眺めながら、集中する・時間を測る・ここにとどまる。</p>
 <h2>実際の円を触ってみる</h2><p>下は時計画面と同じUIです。FOCUSとMEASUREはタップや長押しで操作できます。この練習画面では、設定も滞在記録も保存しません。</p>
-<iframe id="demo" src="index.html?demo=1" title="FOCUS・MEASURE・STAYの操作練習"></iframe>
+<iframe id="demo" src="index.html?demo=1" title="FOCUS・MEASURE・STAYの操作練習" scrolling="no"></iframe>
 <p class="note">FOCUS：開始前に円を上下へスワイプ。タップで開始・停止・再開。停止中の長押しでリセット。MEASUREも同じ操作です。</p>
-<h2>STAYの変化を見る</h2><p>本番のSTAYは自動計測で、操作できません。ここではスライダーで時間を進め、リングとドットの変化を確認できます。</p>
-<div class="scrub"><input id="timeline" type="range" min="0" max="65" step="0.1" value="0" aria-label="STAYのデモ経過時間"><output id="time">0m</output></div>
-<div class="presets"><button data-minute="0">0m</button><button data-minute="5">5m</button><button data-minute="7.5">7.5m</button><button data-minute="10">10m</button><button data-minute="25">25m</button><button data-minute="30">30m</button><button data-minute="60">1h</button></div>
+<h2>STAYの変化を見る</h2><p>本番のSTAYは自動計測で、操作できません。スライダーで時刻を選び、手を離すと実時間で進みます。29:30に合わせて30秒待つと、ドットが周回印にまとまる瞬間を見られます。</p>
+<div class="scrub"><input id="timeline" type="range" min="0" max="65" step="0.0166666666667" value="0" aria-label="STAYのデモ経過時間"><output id="time">0m</output></div>
+<div class="presets"><button data-minute="0">0m</button><button data-minute="5">5m</button><button data-minute="7.5">7.5m</button><button data-minute="10">10m</button><button data-minute="25">25m</button><button data-minute="29.5">29:30</button><button data-minute="30">30m</button><button data-minute="60">1h</button></div>
 <p id="explanation" aria-live="polite">最初の5分でリングが満ちていきます。</p>
 <h2>FOCUS — 集中と休憩</h2><p>初期値は25分の集中と5分の休憩。開始前の上下スワイプで集中時間を1〜120分に変更できます。終了すると円にDONEが表示されます。音は鳴らず、タップで休憩開始。休憩が終わったら、もう一度タップで次の集中へ進みます。</p><p>計測中はタップで一時停止、再タップで再開。PAUSED中に約0.65秒長押しすると初期状態へ戻ります。</p>
 <h2>MEASURE — ストップウォッチ</h2><p>タップで開始・一時停止・再開。停止中の長押しでリセットします。FOCUSとは独立して動きます。数字とPAUSEDは固定位置にあり、表示が変わっても数字は移動しません。</p>
@@ -18,10 +18,6 @@
 <h2>画面を保つ・保存</h2><p>右上の太陽のアイコンをタップすると自動消灯の抑制を要求します。中央が塗りつぶされていれば有効です。利用できるかは端末・ブラウザ・省電力設定に依存します。Safariの共有から「ホーム画面に追加」すると、独立した画面として使えます。</p><p>集中時間の設定と滞在記録は、この端末のブラウザ内だけに保存します。広告・解析・データ送信はありません。ブラウザの保存データを消すと記録も消えます。再読み込みではFOCUSとMEASUREは初期化、STAYは30秒以内なら復元します。</p><p class="note">使い方を別タブで読む間も時計ページの離脱として扱われます。30秒を超えると、本番のSTAYはリセットされます。上の練習UIは本番の記録を変更しません。</p>
 <h2>キーボード</h2><p>FOCUS・MEASUREはEnter／Spaceで操作。停止中のDelete／Backspaceでリセット。FOCUS開始前は↑／↓で分数を変更できます。</p>
 <footer><a href="./">時計を開く</a> · <a href="landing.html">stillについて</a></footer>
-<script>
-const timeline=document.getElementById('timeline'), frame=document.getElementById('demo');
-function preview(){const m=Number(timeline.value);document.getElementById('time').textContent=m>=60?`${Math.floor(m/60)}h ${Math.floor(m%60)}m`:`${m}m`;frame.contentWindow.postMessage({type:'still-demo-stay',minutes:m},'*');const laps=Math.floor(m/30),dots=Math.floor(m/5)%6,filling=Math.floor(m/5)%2===0;document.getElementById('explanation').textContent=`${laps>0?`${laps}個の周回印と、`:''}${dots}個のドット。${filling?'この5分はリングが満ちる':'この5分はリングが消える'}区間です。${m>=30?'6個のドットが周回印へまとまり、次のサイクルが始まっています。':''}`;}
-timeline.addEventListener('input',preview);document.querySelectorAll('[data-minute]').forEach(button=>button.addEventListener('click',()=>{timeline.value=button.dataset.minute;preview();}));frame.addEventListener('load',preview);
-</script></body></html>
+<script src="preview-controller.js?v=2" defer></script></body></html>
 
 

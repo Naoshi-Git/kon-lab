@@ -44,3 +44,7 @@ Orbs now scale to approximately 109/97px on iPhone and 141/136px on iPad mini po
 Scope: landing.html, landing.css, landing.js; help.html navigation; service-worker asset list; README and design notes; the existing still entry in Kon-Lab's public homepage links to the landing page. Clock remains directly available at /still/.
 
 Direction: spare black/off-white editorial design, Japanese prose, oversized clock imagery and honest demonstrations of the five-minute fill/erase cycle. Address the user's "ドパガキ対応" brief as a product mechanism for staying instead of seeking the next stimulus, without describing medical treatment or guaranteed behavior change. Public delivery follows the existing user authorization for this still project.
+
+## Preview fidelity repair
+
+Landing hero and cycle demo now use the actual application DOM, rings, dots, numeral/status positions and collection animation. Help uses the same runtime. Shared preview-controller.js sends seeks/pause commands and reflects elapsed time from the embedded app; it does not run a second time source. DEMO does not read or write saved records. The iframe layout uses a fixed canvas with hidden overflow and removes the main application's minimum-height/media-rule conflicts. Verify real-time 29:30 → 30:00 collection and no inner scrolling at phone/tablet sizes before deployment.

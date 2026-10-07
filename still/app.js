@@ -1,6 +1,7 @@
 'use strict';
 const DEMO = new URLSearchParams(location.search).get('demo')==='1';
-if(DEMO) document.body.classList.add('demo');
+let demoPaused=false;
+if(DEMO){document.documentElement.classList.add('demo-root');document.body.classList.add('demo');const kind=new URLSearchParams(location.search).get('preview');if(kind==='clock')document.body.classList.add('demo-clock');if(kind==='stay')document.body.classList.add('demo-single');}
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
 const dayKey = (time = Date.now()) => { const d = new Date(time); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
@@ -51,7 +52,7 @@ function advance(now) {
   if(focus.state==='running' && focus.elapsed>=focus.length) {
     focus.elapsed=focus.length; focus.state='done'; bloom('focus');
   }
-  if(!DEMO && stay.state==='running' && stay.hiddenAt===null && !document.hidden) {
+  if((!DEMO || !demoPaused) && stay.state==='running' && stay.hiddenAt===null && !document.hidden) {
     const oldMark=Math.floor(stay.elapsed/300000);
     const delta=Math.max(0,now-stay.last); stay.elapsed+=delta; credit(stay.last,now);
     if(Math.floor(stay.elapsed/300000)>oldMark) bloom('stay');
@@ -90,6 +91,7 @@ function render() {
   }
   $('stay').querySelectorAll('.milestones circle').forEach((node,i)=>node.classList.toggle('earned',$('stay-mode').classList.contains('folding') || i<marks));
   $('stay-mode').dataset.laps=String(laps);
+  if(DEMO && window.parent!==window)window.parent.postMessage({type:'still-demo-time',elapsed:stay.elapsed},'*');
 }
 function tick() { const now=Date.now(); advance(now); render(); write('still.records.v2',records); saveSession(); ticker=setTimeout(tick,1000-Date.now()%1000); }
 function toggle(id) {
@@ -167,11 +169,15 @@ if(!DEMO && 'serviceWorker' in navigator && ['https:','http:'].includes(location
   navigator.serviceWorker.register('./sw.js').catch(()=>announce('Offline storage unavailable. Online use still works.'));
 }
 if(DEMO) window.addEventListener('message',event=>{
-  if(event.source!==window.parent || event.data?.type!=='still-demo-stay')return;
+  if(event.source!==window.parent)return;
+  if(event.data?.type==='still-demo-pause'){advance(Date.now());demoPaused=Boolean(event.data.paused);stay.last=Date.now();return;}
+  if(event.data?.type==='still-demo-clock'){
+    focus.state='running';focus.elapsed=2000;focus.last=Date.now();stopwatch.state='running';stopwatch.elapsed=2000;stopwatch.last=Date.now();
+  } else if(event.data?.type!=='still-demo-stay')return;
   const value=Number(event.data.minutes);
   if(!Number.isFinite(value))return;
-  stay.elapsed=Math.max(0,Math.min(65,value))*60000;
-  stay.last=Date.now(); records[dayKey()]={total:stay.elapsed,best:stay.elapsed};render();
+  stay.elapsed=Math.max(0,Math.min(120,value))*60000;stay.last=Date.now();
+  if(typeof event.data.paused==='boolean')demoPaused=event.data.paused;
+  records[dayKey()]={total:stay.elapsed,best:stay.elapsed};render();
 });
-
 
