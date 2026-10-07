@@ -32,3 +32,9 @@ Real iPhone/iPad layout, touch gestures, visibility/lock behavior, offline cachi
 
 
 
+
+## Responsive verification update
+
+2026-10-07: iPhone 17-equivalent 402×874 and 874×402, iPad mini-equivalent 744×1133 and 1133×744 checked with Chromium viewport emulation. Simulated safe areas: iPhone portrait top 62/bottom 34; landscape sides 62/bottom 21; iPad top 24/bottom 20. These are test assumptions, not guarantees about every OS version.
+
+Orbs now scale to approximately 109/97px on iPhone and 141/136px on iPad mini portrait/landscape. Header controls have 44×44px hit regions. Header safe-area padding is additive; standalone display includes conservative fallbacks when environment insets report zero. Verified no content overflow in these layouts and unchanged stopwatch numeral coordinates when toggling pause. Real Safari/PWA validation remains necessary for hardware-specific status bars and wake lock.

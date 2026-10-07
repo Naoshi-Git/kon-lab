@@ -19,7 +19,8 @@ Serve this directory over HTTPS via GitHub Pages. Add to Home Screen in Safari f
 
 Stay sessions use the v3 local-storage key; previous manual/sleep sessions are not restored. Existing daily records are preserved. Focus and Measure reset on reload.
 
-Actual iPhone/iPad interaction, wake-lock behavior, and battery consumption have not been verified on-device. Published through the repository gh-pages branch at https://naoshi-git.github.io/kon-lab/still/.
+Responsive layout checked in Chromium at iPhone 17-equivalent 402×874 / 874×402 and iPad mini-equivalent 744×1133 / 1133×744, with simulated safe-area padding. Verified no layout overflow, 44px header targets, and stable stopwatch numeral positions across RUNNING/PAUSED. Actual iOS/iPadOS rendering, wake-lock behavior, touch gestures, and battery consumption remain unverified on-device. Published through the repository gh-pages branch at https://naoshi-git.github.io/kon-lab/still/.
+
 
 
 

@@ -33,3 +33,74 @@ footer{justify-content:flex-end;min-height:30px}
 .demo .mode{width:100px}
 .demo .orb{width:88px;height:88px}
 .demo .value{font-size:18px}
+/* Responsive device layout and standalone safe areas. */
+:root{--safe-top:env(safe-area-inset-top,0px);--safe-right:env(safe-area-inset-right,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:env(safe-area-inset-left,0px);--orb-size:clamp(112px,12vw,150px)}
+header{padding:calc(var(--safe-top) + 16px) calc(var(--safe-right) + 24px) 0 calc(var(--safe-left) + 24px);min-height:60px;flex-shrink:0}
+.wordmark{font-size:27px;letter-spacing:-1.1px}
+header nav{gap:10px}
+#awake,.help-link{width:44px;height:44px;display:grid;place-items:center;flex-shrink:0}
+#awake{font-size:22px;padding:0}
+.help-link{font-size:16px;border-color:#39372f}
+main{padding:32px calc(var(--safe-right) + 24px) 26px calc(var(--safe-left) + 24px);gap:clamp(28px,4svh,48px)}
+.modes{gap:clamp(24px,5vw,72px)}
+.mode{width:var(--orb-size)}
+.orb{width:var(--orb-size);height:var(--orb-size)}
+.glyph{width:34px;height:34px}
+.value{font-size:clamp(21px,2.3vw,28px);letter-spacing:-.025em}
+.phase{font-size:8px}
+#stay .value{font-size:clamp(21px,2.3vw,27px)}
+h2{font-size:12px;margin:18px 0 0;letter-spacing:.18em}
+.record{font-size:10px;gap:28px;min-height:22px}
+.record strong{font-size:13px}
+footer{padding:0 calc(var(--safe-right) + 24px) calc(var(--safe-bottom) + 12px) calc(var(--safe-left) + 24px);min-height:calc(var(--safe-bottom) + 12px);flex-shrink:0}
+#notice:empty{display:none}
+.mode.engaged .face .value{top:calc(50% - 6px)}
+.mode.engaged .face .phase{top:calc(50% + 13px);height:10px;line-height:10px}
+#stay-mode.engaged .face .value{top:50%}
+@media(orientation:portrait){
+ :root{--orb-size:clamp(102px,27vw,132px)}
+ main{gap:clamp(34px,5svh,56px);padding-top:30px;padding-bottom:28px}
+ .modes{gap:clamp(12px,3vw,28px)}
+ .digits{font-size:clamp(85px,23vw,180px)}
+ .value,#stay .value{font-size:21px}
+ .record{gap:24px}
+}
+@media(orientation:portrait) and (min-width:600px){
+ :root{--orb-size:clamp(132px,19vw,164px)}
+ .modes{gap:clamp(32px,6vw,64px)}
+ .value,#stay .value{font-size:27px}
+ .phase{font-size:9px}
+ .mode.engaged .face .phase{top:calc(50% + 17px)}
+ #date{font-size:15px}
+ h2{font-size:13px;margin-top:22px}
+ main{gap:clamp(42px,5svh,64px)}
+}
+@media(orientation:landscape) and (max-height:500px){
+ :root{--orb-size:clamp(92px,24svh,108px)}
+ header{padding-top:calc(var(--safe-top) + 8px);min-height:52px}
+ main{padding-top:8px;padding-bottom:10px;gap:14px}
+ .digits{font-size:min(15vw,24svh)}
+ #date{font-size:11px;margin-bottom:10px}
+ .glyph{width:29px;height:29px}
+ .value,#stay .value{font-size:20px}
+ h2{font-size:11px;margin-top:10px}
+ .record{min-height:18px;line-height:1.5}
+ footer{padding-bottom:calc(var(--safe-bottom) + 4px);min-height:calc(var(--safe-bottom) + 4px)}
+ .lap-badge{position:absolute;left:calc(100% + 7px);top:calc(var(--orb-size) / 2 - 9px);margin:0}
+ .mode{position:relative}
+}
+@media(display-mode:standalone) and (orientation:portrait) and (max-width:599px){:root{--safe-top:max(env(safe-area-inset-top,0px),54px)}}
+@media(display-mode:standalone) and (orientation:portrait) and (min-width:600px){:root{--safe-top:max(env(safe-area-inset-top,0px),24px)}}
+@media(display-mode:standalone) and (orientation:landscape) and (max-height:500px){:root{--safe-left:max(env(safe-area-inset-left,0px),59px);--safe-right:max(env(safe-area-inset-right,0px),59px)}}
+/* The instructional iframe keeps its compact, isolated layout. */
+.demo{--orb-size:88px;--safe-top:0px;--safe-right:0px;--safe-bottom:0px;--safe-left:0px}
+.demo main{padding:30px 12px 18px;gap:30px}
+.demo .modes{gap:clamp(12px,4vw,40px)}
+.demo .mode{width:100px}
+.demo .value,.demo #stay .value{font-size:18px}
+.demo h2{font-size:10px;margin-top:18px}
+.demo .record{font-size:9px;gap:24px}
+.demo .record strong{font-size:11px}
+#awake svg{width:24px;height:24px;fill:none;stroke:#939087;stroke-width:1.3;stroke-linecap:round}
+#awake[aria-pressed=true] svg{stroke:var(--paper)}
+#awake[aria-pressed=true] svg circle{fill:var(--paper)}

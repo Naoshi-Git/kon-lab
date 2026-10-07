@@ -174,3 +174,4 @@ if(DEMO) window.addEventListener('message',event=>{
   stay.last=Date.now(); records[dayKey()]={total:stay.elapsed,best:stay.elapsed};render();
 });
 
+
