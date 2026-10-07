@@ -18,6 +18,7 @@ const stopwatch = { state:'idle', elapsed:0, last:Date.now() };
 const stay = { state:'running', elapsed:0, last:Date.now(), hiddenAt:null, dayAmounts:{} };
 let records = read('still.records.v2', {});
 let ticker, wakeLock, awakeWanted = false;
+let collectionTimer, presentedLaps=0;
 const saved = read('still.session.v3', null);
 if (saved && Number.isFinite(saved.elapsed) && saved.elapsed >= 0 && saved.state==='running') {
   const away = Date.now() - saved.hiddenAt;
@@ -82,13 +83,23 @@ function render() {
   $('stay').setAttribute('aria-label',`Stay ${minutes(stay.elapsed)}. Automatic. ${segment%2===0?'Filling':'Erasing'} five-minute cycle.`);
   const marks=Math.floor((stay.elapsed%1800000)/300000);
   const laps=Math.floor(stay.elapsed/1800000), today=records[dayKey()]||{total:0,best:0};
-  setText($('total'),minutes(today.total)); setText($('best'),minutes(today.best)); setText($('laps'),String(laps));
-  $('lap-badge').hidden=laps===0;
-  const newLap=laps!==Number($('stay-mode').dataset.laps||0);
-  if(newLap && laps>0) {
-    bloom('lap-badge'); $('stay-mode').classList.add('folding');
-    setTimeout(()=>{ $('stay-mode').classList.remove('folding'); render(); },900);
+  setText($('total'),minutes(today.total)); setText($('best'),minutes(today.best));
+  const previousLaps=Number($('stay-mode').dataset.laps||0);
+  if(laps>previousLaps){
+    clearTimeout(collectionTimer);
+    $('stay-mode').classList.add('folding');
+    collectionTimer=setTimeout(()=>{
+      $('stay-mode').classList.remove('folding');
+      presentedLaps=Math.floor(stay.elapsed/1800000);
+      setText($('laps'),`× ${presentedLaps}`);
+      $('lap-badge').hidden=presentedLaps===0;
+      bloom('lap-badge');render();
+    },1200);
+  } else if(laps<previousLaps){
+    clearTimeout(collectionTimer);$('stay-mode').classList.remove('folding');presentedLaps=laps;
   }
+  setText($('laps'),`× ${presentedLaps}`);
+  $('lap-badge').hidden=presentedLaps===0;
   $('stay').querySelectorAll('.milestones circle').forEach((node,i)=>node.classList.toggle('earned',$('stay-mode').classList.contains('folding') || i<marks));
   $('stay-mode').dataset.laps=String(laps);
   if(DEMO && window.parent!==window)window.parent.postMessage({type:'still-demo-time',elapsed:stay.elapsed},'*');

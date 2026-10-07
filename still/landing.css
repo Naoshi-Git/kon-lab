@@ -5,3 +5,17 @@
 .clock-scene{padding:0!important}
 .clock-scene iframe{display:block;width:100%;height:520px;border:0;background:#000}
 .stay-live{width:100%;height:310px;display:block;border:0;background:#000;margin:0 auto 24px}
+/* Container-safe columns also cover Safari's desktop-width presentation on phones. */
+.stay-section{grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr))}
+.statement,.device{grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr))}
+.stay-live{min-width:0;max-width:100%}
+@media(max-device-width:600px){
+ .site-header{padding:calc(18px + env(safe-area-inset-top)) 24px 18px}
+ .hero{display:block;padding:48px 24px 0}
+ .hero h1{font-size:44px}
+ .hero-copy{padding-bottom:0}
+ .clock-scene{margin:44px 0 30px}
+ .section{padding:64px 24px}
+ .statement,.device,.stay-section,.rule-grid,.tool-grid{grid-template-columns:1fr;gap:28px}
+ .stay-demo{padding-top:0}
+}

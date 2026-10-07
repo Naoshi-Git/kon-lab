@@ -129,3 +129,18 @@ html.demo-root{height:100%;overflow:hidden}
 .demo{height:100vh;min-height:0}
 .demo main{height:100vh}
 .demo-clock main{height:calc(100vh - 60px)}
+/* Badges occupy an overlay slot; earning one never changes the row's geometry. */
+.mode{position:relative}
+.lap-badge{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);margin:0;white-space:nowrap}
+.lap-badge.celebrate{animation:badge-arrive .45s ease-out}
+@keyframes badge-arrive{from{opacity:0;transform:translateX(-50%) scale(.7)}to{opacity:1;transform:translateX(-50%) scale(1)}}
+.folding .milestones{animation:collect 1.2s ease-in-out forwards}
+@keyframes collect{0%,25%{transform:scale(1);opacity:1}75%{transform:scale(.12);opacity:1}100%{transform:scale(0);opacity:0}}
+.demo .lap-badge{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);margin:0}
+.demo-single .orb{width:240px;height:240px}
+.demo-single .mode{width:240px;flex:none}
+.demo-single .modes{width:100%;flex:none}
+.demo-single .lap-badge{top:calc(100% + 7px)}
+.demo-clock .orb{width:var(--orb-size);height:var(--orb-size)}
+@media(orientation:landscape) and (max-height:500px){body:not(.demo) .lap-badge{left:calc(100% + 7px);top:calc(var(--orb-size) / 2 - 9px);transform:none}body:not(.demo) .lap-badge.celebrate{animation:none}}
+@media(prefers-reduced-motion:reduce){.folding .milestones,.lap-badge.celebrate{animation:none}}

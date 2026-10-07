@@ -1,5 +1,5 @@
-const CACHE='still-v3-20261007-preview5';
-const ASSETS=['./','./index.html','./style.css?v=preview5','./app.js?v=preview5','./help.html','./icon.svg','./manifest.webmanifest','./landing.html','./landing.css?v=2','./preview-controller.js?v=2'];
+const CACHE='still-v3-20261007-preview6';
+const ASSETS=['./','./index.html','./style.css?v=preview6','./app.js?v=preview6','./help.html','./icon.svg','./manifest.webmanifest','./landing.html','./landing.css?v=3','./preview-controller.js?v=2'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('still-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{
