@@ -1,0 +1,13 @@
+{
+  "name": "still — clock & focus",
+  "short_name": "still",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "description": "A quiet clock with focus, stopwatch, and automatic stay cycles.",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
+

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#000"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="still"><title>still — clock & focus</title><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg"><link rel="stylesheet" href="style.css"><script src="app.js" defer></script>
+</head>
+<body>
+<header><span class="wordmark">still.</span><nav><button id="awake" aria-pressed="false" aria-label="Keep screen awake" title="Keep screen awake">◌</button><a class="help-link" href="help.html" target="_blank" rel="noopener" aria-label="Open instructions in a new tab">?</a></nav></header>
+<main>
+<section class="clock" aria-label="Current time"><p id="date">—</p><div class="digits"><div class="hours-minutes"><span id="hours" class="split">00</span><span id="minutes" class="split">00</span></div><span id="seconds" class="split">00</span></div></section>
+<section class="modes" aria-label="Timers">
+<article class="mode" id="focus-mode"><button class="orb" id="focus" aria-label="Start focus. Swipe up or down to set minutes"><svg class="ring" viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="55"/><circle class="progress" cx="60" cy="60" r="55"/></svg><span class="face"><svg class="glyph" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M16 9v7l4 3M13 3h6"/></svg><span class="value">25:00</span><span class="phase">READY</span></span></button><h2>FOCUS</h2></article>
+<article class="mode" id="stopwatch-mode"><button class="orb" id="stopwatch" aria-label="Start stopwatch"><svg class="ring" viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="55"/><circle class="progress" cx="60" cy="60" r="55"/></svg><span class="face"><svg class="glyph" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="18" r="10"/><path d="M16 12v6M13 3h6M16 3v5M24 7l3 3"/></svg><span class="value">00:00</span><span class="phase">READY</span></span></button><h2>MEASURE</h2></article>
+<article class="mode engaged" id="stay-mode"><div class="orb" id="stay" role="img" aria-label="Stay time. Starts automatically"><svg class="ring" viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="55"/><circle class="progress" cx="60" cy="60" r="55"/><g class="milestones"/></svg><span class="face"><span class="value">0m</span></span></div><h2>STAY</h2><div class="lap-badge" id="lap-badge" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6"/><circle cx="10" cy="4" r="1.3"/><circle cx="15.2" cy="7" r="1.3"/><circle cx="15.2" cy="13" r="1.3"/><circle cx="10" cy="16" r="1.3"/><circle cx="4.8" cy="13" r="1.3"/><circle cx="4.8" cy="7" r="1.3"/></svg><span id="laps">1</span></div></article>
+</section>
+<section class="record" aria-label="Today's stay records"><span title="Total stay time today">TODAY <strong id="total">0m</strong></span><span title="Longest single stay session today">LONGEST <strong id="best">0m</strong></span></section>
+</main><footer><span id="notice" role="status" aria-live="polite"></span></footer>
+</body></html>
+

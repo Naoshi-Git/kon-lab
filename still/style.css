@@ -1,0 +1,35 @@
+:root{color-scheme:dark;--paper:#e8e5dc;--dim:#77756f;--line:#292824}*{box-sizing:border-box}body{margin:0;background:#000;color:var(--paper);font-family:Arial,"Helvetica Neue",sans-serif;min-height:100svh;display:flex;flex-direction:column;-webkit-tap-highlight-color:transparent}button{font:inherit;color:inherit;cursor:pointer}header{display:flex;justify-content:space-between;align-items:center;padding:max(24px,env(safe-area-inset-top)) max(30px,env(safe-area-inset-right)) 0 max(30px,env(safe-area-inset-left))}.wordmark{font-size:22px;letter-spacing:-1px;color:#77756f}#awake{border:0;background:none;font-size:11px;letter-spacing:.08em;color:var(--dim);padding:12px}#awake[aria-pressed=true]{color:var(--paper)}main{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:35px 24px 25px;gap:42px}.clock{width:min(1120px,100%);text-align:center}#date{font-size:clamp(11px,1.45vw,17px);letter-spacing:.3em;font-weight:600;color:#92908a;margin:0 0 25px}.digits{display:flex;align-items:center;justify-content:center;gap:5.5vw;font-size:clamp(80px,17vw,235px);font-weight:700;line-height:1;letter-spacing:-.065em;font-variant-numeric:tabular-nums}.hours-minutes{display:flex;gap:5.5vw}.split{position:relative;display:block;padding-right:.065em}.split:after{content:"";position:absolute;left:0;right:0;top:51%;height:clamp(2px,.32vw,5px);background:#000}.modes{display:flex;justify-content:center;gap:clamp(24px,5vw,80px);width:100%}.mode{width:150px;text-align:center}.orb{position:relative;display:block;margin:auto;width:112px;height:112px;padding:0;border:0;border-radius:50%;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}.ring{position:absolute;inset:0;width:100%;height:100%;overflow:visible;transform:rotate(-90deg)}.ring circle{fill:none;stroke-width:1}.track{stroke:var(--line)}.progress{stroke:var(--paper);stroke-width:1.7;stroke-dasharray:345.576;stroke-dashoffset:345.576;stroke-linecap:round}.face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}.glyph{width:30px;height:30px;fill:none;stroke:#a9a69e;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}.value{display:none;font-size:21px;letter-spacing:-.045em;font-variant-numeric:tabular-nums}.phase{display:none;font-size:7px;letter-spacing:.18em;color:var(--dim)}.mode.engaged .glyph{display:none}.mode.engaged .value,.mode.engaged .phase{display:block}.mode.paused .value{color:var(--dim)}.mode.sleeping .value{font-size:16px}.mode.done .track{stroke:var(--paper)}h2{font-size:10px;font-weight:500;letter-spacing:.23em;margin:18px 0 10px}.status,.hint{font-size:10px;color:var(--dim);margin:0;line-height:1.8}.hint{font-size:9px;color:#55534e;margin-top:4px}.milestones circle{fill:#000;stroke:#4d4b45;stroke-width:1}.milestones circle.earned{fill:var(--paper);stroke:var(--paper)}.record{text-align:center;color:#77756f;font-size:11px;min-height:49px;line-height:1.8}.record>span{letter-spacing:.06em}.record>div{display:flex;justify-content:center;gap:24px;margin-top:8px;font-size:10px;color:#55534e}strong{font-weight:400;color:#aaa79f;margin-left:6px}footer{display:flex;justify-content:space-between;gap:12px;padding:10px 30px max(20px,env(safe-area-inset-bottom));font-size:9px;letter-spacing:.08em;color:#44423d}#notice{max-width:60%;text-align:right}button:focus-visible{outline:1px solid var(--paper);outline-offset:6px}.celebrate{animation:bloom .9s ease-out}@keyframes bloom{50%{transform:scale(1.07);filter:brightness(1.6)}}@media(orientation:portrait){main{gap:44px;padding-top:35px}.digits{flex-direction:column;gap:17px;font-size:clamp(85px,23vw,180px)}.hours-minutes{gap:7vw}#seconds{font-size:.43em;color:#aaa79f;letter-spacing:-.02em}#date{margin-bottom:28px;font-size:11px}.modes{gap:clamp(12px,4vw,45px)}.mode{width:100px}.orb{width:88px;height:88px}.value{font-size:18px}.status{font-size:9px}.hint{font-size:8px}.record>div{gap:18px}header{padding-left:22px;padding-right:15px}footer{padding-left:22px;padding-right:22px}}@media(max-height:620px) and (orientation:landscape){main{gap:20px;padding:15px 24px}.digits{font-size:min(17vw,30vh)}#date{margin-bottom:14px}.orb{width:75px;height:75px}.value{font-size:16px}h2{margin:9px 0 3px}.record{min-height:35px}.record>div{margin-top:0}header{padding-top:8px}footer{padding-bottom:8px}}@media(prefers-reduced-motion:reduce){.celebrate{animation:none}}
+/* Quiet, automatic Stay. Instructions belong to the help tab. */
+header nav{display:flex;align-items:center;gap:12px}
+#awake{font-size:17px;padding:8px;width:34px;height:34px}
+.help-link{display:grid;place-items:center;width:26px;height:26px;border:1px solid #292824;border-radius:50%;text-decoration:none;color:#77756f;font-size:11px}
+.help-link:focus-visible{outline:1px solid var(--paper);outline-offset:5px}
+#stay{cursor:default;touch-action:auto}
+.value{font-variant-numeric:tabular-nums;white-space:nowrap;min-width:70px;text-align:center}
+#stay .value{font-size:20px;letter-spacing:-.02em}
+#stay .progress{transition:stroke-dashoffset 1s linear}
+.record{display:flex;justify-content:center;gap:28px;min-height:20px;font-size:9px;letter-spacing:.12em;color:#55534e}
+.record strong{font-size:11px;letter-spacing:0;font-variant-numeric:tabular-nums}
+footer{justify-content:flex-end;min-height:30px}
+.lap-badge{display:flex;align-items:center;justify-content:center;gap:4px;color:#a9a69e;font-size:10px;font-variant-numeric:tabular-nums;margin-top:9px;height:18px}
+.lap-badge[hidden]{display:none}
+.lap-badge svg{width:18px;height:18px;fill:var(--paper)}
+.lap-badge svg circle:first-child{fill:none;stroke:#55534e;stroke-width:.6}
+#stay .milestones{transform-origin:60px 60px}
+.folding .milestones{animation:collect .85s ease-in forwards}
+.celebrate{animation:quiet-bloom .8s ease-out}
+@keyframes collect{0%,25%{transform:scale(1);opacity:1}100%{transform:scale(.18);opacity:0}}
+@keyframes quiet-bloom{50%{transform:scale(1.035)}}
+@media(orientation:portrait){#stay .value{font-size:17px}.record{gap:24px}}
+@media(prefers-reduced-motion:reduce){#stay .progress{transition:none}.folding .milestones,.celebrate{animation:none}}
+/* Keep the number/status pair optically centered with the same slots in every state. */
+.mode.engaged .face .value{position:absolute;left:50%;top:calc(50% - 6px);transform:translate(-50%,-50%);line-height:1.15}
+.mode.engaged .face .phase{position:absolute;left:0;right:0;top:calc(50% + 11px);height:9px;line-height:9px;text-align:center;letter-spacing:.13em}
+#stay-mode.engaged .face .value{top:50%}
+.demo{min-height:0;height:290px}
+.demo header,.demo .clock,.demo footer{display:none}
+.demo main{padding:30px 12px 18px;gap:30px;justify-content:center}
+.demo .modes{gap:clamp(12px,4vw,40px)}
+.demo .mode{width:100px}
+.demo .orb{width:88px;height:88px}
+.demo .value{font-size:18px}

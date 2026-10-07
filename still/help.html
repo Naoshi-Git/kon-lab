@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#000"><title>still — 使い方</title><style>
+*{box-sizing:border-box}body{background:#000;color:#e8e5dc;font:14px/1.9 Arial,"Yu Gothic",sans-serif;max-width:700px;margin:45px auto;padding:0 24px}h1{font-size:30px;font-weight:400;letter-spacing:-1px}h2{font-size:12px;letter-spacing:.18em;margin:40px 0 12px}p,li{color:#a19e96}a,strong{color:#e8e5dc}strong{font-weight:500}iframe{width:100%;height:290px;border:1px solid #292824;border-radius:18px;background:#000}button{font:inherit;background:#080808;border:1px solid #39372f;color:#e8e5dc;border-radius:20px;padding:6px 13px;cursor:pointer}button:hover{border-color:#aaa79f}.presets{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.scrub{display:flex;align-items:center;gap:14px}input{width:100%;accent-color:#e8e5dc}output{white-space:nowrap;width:48px;font-variant-numeric:tabular-nums}.note{font-size:12px;color:#77756f}footer{margin:45px 0}dt{color:#e8e5dc;margin-top:12px}dd{margin:4px 0 0;color:#a19e96}kbd{font:inherit;color:#e8e5dc}
+</style></head><body>
+<h1>still.</h1><p>時計を眺めながら、集中する・時間を測る・ここにとどまる。</p>
+<h2>実際の円を触ってみる</h2><p>下は時計画面と同じUIです。FOCUSとMEASUREはタップや長押しで操作できます。この練習画面では、設定も滞在記録も保存しません。</p>
+<iframe id="demo" src="index.html?demo=1" title="FOCUS・MEASURE・STAYの操作練習"></iframe>
+<p class="note">FOCUS：開始前に円を上下へスワイプ。タップで開始・停止・再開。停止中の長押しでリセット。MEASUREも同じ操作です。</p>
+<h2>STAYの変化を見る</h2><p>本番のSTAYは自動計測で、操作できません。ここではスライダーで時間を進め、リングとドットの変化を確認できます。</p>
+<div class="scrub"><input id="timeline" type="range" min="0" max="65" step="0.1" value="0" aria-label="STAYのデモ経過時間"><output id="time">0m</output></div>
+<div class="presets"><button data-minute="0">0m</button><button data-minute="5">5m</button><button data-minute="7.5">7.5m</button><button data-minute="10">10m</button><button data-minute="25">25m</button><button data-minute="30">30m</button><button data-minute="60">1h</button></div>
+<p id="explanation" aria-live="polite">最初の5分でリングが満ちていきます。</p>
+<h2>FOCUS — 集中と休憩</h2><p>初期値は25分の集中と5分の休憩。開始前の上下スワイプで集中時間を1〜120分に変更できます。終了すると円にDONEが表示されます。音は鳴らず、タップで休憩開始。休憩が終わったら、もう一度タップで次の集中へ進みます。</p><p>計測中はタップで一時停止、再タップで再開。PAUSED中に約0.65秒長押しすると初期状態へ戻ります。</p>
+<h2>MEASURE — ストップウォッチ</h2><p>タップで開始・一時停止・再開。停止中の長押しでリセットします。FOCUSとは独立して動きます。数字とPAUSEDは固定位置にあり、表示が変わっても数字は移動しません。</p>
+<h2>STAY — 滞在の積み重ね</h2><p>ページを開くと自動で開始。中央の時間は1分単位の表示です。5分でリングが一周し、次の5分ではリングが消えていきます。5分を終えるたびにドットが1個増え、30分で6個が揃うと小さな周回印へまとまります。その後も新しい6個をため、周回印の横の数字が増えていきます。</p><p>他のタブやアプリへ移る・画面をロックする・ページを閉じると、滞在時間の加算が止まります。<strong>30秒以内に戻れば継続</strong>し、それを超えると今回の経過時間・ドット・周回数がリセットされます。戻ると新しく自動開始します。画面オフも同じルールです。</p>
+<dl><dt>TODAY</dt><dd>今日のすべての滞在を合計した時間。</dd><dt>LONGEST</dt><dd>今日の1回の滞在で最も長かった時間。1分と6分の2回なら、TODAYは7m、LONGESTは6mです。</dd><dt>m / h</dt><dd>分 / 時間。1h 05mは1時間5分です。非表示中の時間は含みません。</dd></dl>
+<p>今日の記録は離脱によるリセット後も残ります。日付をまたぐと、端末の現地時刻で日ごとに分けます。</p>
+<h2>画面を保つ・保存</h2><p>右上の小さな円をタップすると自動消灯の抑制を要求します。塗りつぶされた点なら有効です。利用できるかは端末・ブラウザ・省電力設定に依存します。Safariの共有から「ホーム画面に追加」すると、独立した画面として使えます。</p><p>集中時間の設定と滞在記録は、この端末のブラウザ内だけに保存します。広告・解析・データ送信はありません。ブラウザの保存データを消すと記録も消えます。再読み込みではFOCUSとMEASUREは初期化、STAYは30秒以内なら復元します。</p><p class="note">使い方を別タブで読む間も時計ページの離脱として扱われます。30秒を超えると、本番のSTAYはリセットされます。上の練習UIは本番の記録を変更しません。</p>
+<h2>キーボード</h2><p>FOCUS・MEASUREはEnter／Spaceで操作。停止中のDelete／Backspaceでリセット。FOCUS開始前は↑／↓で分数を変更できます。</p>
+<footer><a href="./">時計を開く</a></footer>
+<script>
+const timeline=document.getElementById('timeline'), frame=document.getElementById('demo');
+function preview(){const m=Number(timeline.value);document.getElementById('time').textContent=m>=60?`${Math.floor(m/60)}h ${Math.floor(m%60)}m`:`${m}m`;frame.contentWindow.postMessage({type:'still-demo-stay',minutes:m},'*');const laps=Math.floor(m/30),dots=Math.floor(m/5)%6,filling=Math.floor(m/5)%2===0;document.getElementById('explanation').textContent=`${laps>0?`${laps}個の周回印と、`:''}${dots}個のドット。${filling?'この5分はリングが満ちる':'この5分はリングが消える'}区間です。${m>=30?'6個のドットが周回印へまとまり、次のサイクルが始まっています。':''}`;}
+timeline.addEventListener('input',preview);document.querySelectorAll('[data-minute]').forEach(button=>button.addEventListener('click',()=>{timeline.value=button.dataset.minute;preview();}));frame.addEventListener('load',preview);
+</script></body></html>
