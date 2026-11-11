@@ -16,21 +16,28 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GLib, Pango
 
-from .core import Config, DoubleCtrlDetector, History, is_same_window, render_template, runtime_socket
+from .core import Config, DoubleModifierDetector, History, is_same_window, render_template, runtime_socket, shortcut_label
 
 CSS = b"""
-.clibor-popup { background: #fff; border: 1px solid #aeb6c2; border-radius: 9px; }
-.clibor-title { color: #1d2635; font-size: 17px; font-weight: 700; }
-.clibor-subtle { color: #596579; font-size: 12px; }
-.clibor-tab { background: transparent; color: #344456; border: 0; border-bottom: 3px solid transparent;
-  border-radius: 0; padding: 11px 14px; font-weight: 600; }
-.clibor-tab.active { color: #0059c7; border-bottom-color: #0059c7; }
-.clibor-row { padding: 8px 13px; border-bottom: 1px solid #e7eaf0; }
-.clibor-row:selected { background: #e8f1ff; color: #142a44; }
-.clibor-row:selected label { color: #142a44; }
-.clibor-number { color: #566579; font-size: 12px; font-weight: 700; }
-.clibor-preview { font-size: 14px; color: #152539; }
-.clibor-footer { padding: 8px 12px; background: #f5f7fa; }
+window.clibor-window { background-color: transparent; }
+.clibor-popup { background-color: #101010; border: 1px solid #626262; border-radius: 7px; color: #f3f3f3; }
+.clibor-header { background: #101010; border-top-left-radius: 7px; border-top-right-radius: 7px;
+  color: #e4e4e4; padding: 3px 6px 1px 6px; font-size: 10px; }
+.clibor-tab { background: #1d1d1d; color: #f2f2f2; border: 1px solid #777; border-radius: 2px;
+  padding: 1px 5px; min-height: 19px; font-size: 10px; }
+.clibor-tab.active { background: #464646; color: #fff; }
+.clibor-status { background: #101010; color: #ededed; padding: 1px 5px; font-size: 9px; }
+.clibor-search { background: #bcbcbc; color: #090909; border: 0; border-radius: 1px;
+  padding: 0 4px; min-height: 20px; font-size: 10px; }
+.clibor-list { background: #0c0c0c; }
+.clibor-row { background: #090909; border: 0; margin: 0; padding: 0; }
+.clibor-row:nth-child(even) { background: #1c1c1c; }
+.clibor-row:selected, .clibor-row:selected:focus { background: #19427a; }
+.clibor-row:selected label { color: #fff; }
+.clibor-rowbox { padding: 1px 4px; min-height: 19px; }
+.clibor-number { color: #dddddd; font-size: 10px; font-weight: normal; }
+.clibor-preview { color: #ededed; font-size: 10px; }
+.clibor-subtle { color: #666; font-size: 12px; }
 .clibor-section { color: #202939; font-weight: bold; font-size: 16px; }
 .clibor-settings { background: #fff; }
 .clibor-settings label { color: #1d2939; font-size: 16px; }
@@ -118,7 +125,7 @@ class XRecordListener(threading.Thread):
     def __init__(self, on_trigger, timeout_ms):
         super().__init__(name="xrecord-double-ctrl", daemon=True)
         self.on_trigger = on_trigger
-        self.detector = DoubleCtrlDetector(timeout_ms)
+        self.detector = DoubleModifierDetector(timeout_ms)
         self.error = None
 
     def run(self):
@@ -128,12 +135,14 @@ class XRecordListener(threading.Thread):
         control = display.Display()
         recorder = display.Display()
         if not control.has_extension("RECORD"):
-            self.error = "XRecord 拡張が利用できません。Ctrl×2は無効です。"
+            self.error = "XRecord 拡張が利用できません。ダブル修飾キーは無効です。"
             print(self.error, file=sys.stderr)
             return
-        ctrl_codes = {control.keysym_to_keycode(XK.XK_Control_L),
-                      control.keysym_to_keycode(XK.XK_Control_R)}
-        ctrl_codes.discard(0)
+        modifier_codes = {control.keysym_to_keycode(ks) for ks in (
+            XK.XK_Control_L, XK.XK_Control_R,
+            XK.XK_Alt_L, XK.XK_Alt_R,
+            XK.XK_Shift_L, XK.XK_Shift_R)}
+        modifier_codes.discard(0)
 
         def callback(reply):
             if reply.category != record.FromServer or reply.client_swapped or not reply.data:
@@ -143,7 +152,7 @@ class XRecordListener(threading.Thread):
                 event, data = rq.EventField(None).parse_binary_value(data, recorder.display, None, None)
                 if event.type not in (X.KeyPress, X.KeyRelease):
                     continue
-                if self.detector.handle(event.type == X.KeyPress, event.detail, ctrl_codes):
+                if self.detector.handle(event.type == X.KeyPress, event.detail, modifier_codes):
                     GLib.idle_add(self.on_trigger)
 
         context = recorder.record_create_context(0, [record.AllClients], [{
@@ -178,71 +187,111 @@ class HistoryPopup(Gtk.Window):
         self.set_skip_pager_hint(True)
         self.set_type_hint(Gdk.WindowTypeHint.UTILITY)
         self.set_keep_above(True)
-        self.set_default_size(app.config.values["popup_width"], 450)
+        self.set_name("clibor-window")
+        self.get_style_context().add_class("clibor-window")
+        self.set_app_paintable(True)
+        screen = Gdk.Screen.get_default()
+        if screen and screen.is_composited():
+            visual = screen.get_rgba_visual()
+            if visual:
+                self.set_visual(visual)
+        self.set_default_size(app.config.values["popup_width"], 510)
+        self.position_save_source = None
         self.connect("focus-out-event", lambda *_: GLib.idle_add(self._hide_on_focus_loss))
+        self.connect("configure-event", self.on_configure)
         self.connect("key-press-event", self.on_key)
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         outer.get_style_context().add_class("clibor-popup")
         self.add(outer)
-        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        header.set_margin_start(14)
-        header.set_margin_end(8)
-        header.set_margin_top(10)
-        header.set_margin_bottom(6)
+        drag_area = Gtk.EventBox()
+        drag_area.set_visible_window(False)
+        drag_area.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+        drag_area.connect("button-press-event", self.on_drag_start)
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        header.get_style_context().add_class("clibor-header")
         title = Gtk.Label(label="Clibor Lite", xalign=0)
-        title.get_style_context().add_class("clibor-title")
         header.pack_start(title, True, True, 0)
-        setting_btn = Gtk.Button.new_from_icon_name("emblem-system-symbolic", Gtk.IconSize.MENU)
-        setting_btn.set_tooltip_text("設定を開く")
-        setting_btn.set_relief(Gtk.ReliefStyle.NONE)
-        setting_btn.connect("clicked", lambda *_: (self.hide(), app.show_settings()))
-        header.pack_end(setting_btn, False, False, 0)
-        outer.pack_start(header, False, False, 0)
-        tabs = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.header_summary = Gtk.Label(label="", xalign=1)
+        header.pack_end(self.header_summary, False, False, 0)
+        drag_area.add(header)
+        outer.pack_start(drag_area, False, False, 0)
+        tabs = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+        tabs.set_margin_start(4)
+        tabs.set_margin_end(4)
         self.tab_buttons = {}
-        for key, title in (("history", "履歴"), ("templates", "定型文")):
-            button = Gtk.Button(label=title)
+        for key, title_text in (("history", "クリップボード"), ("templates", "定型文")):
+            button = Gtk.Button(label=title_text)
+            button.set_relief(Gtk.ReliefStyle.NONE)
             button.get_style_context().add_class("clibor-tab")
             button.connect("clicked", lambda _b, k=key: self.select_tab(k))
             tabs.pack_start(button, True, True, 0)
             self.tab_buttons[key] = button
+        setting_btn = Gtk.Button.new_from_icon_name("emblem-system-symbolic", Gtk.IconSize.MENU)
+        setting_btn.set_relief(Gtk.ReliefStyle.NONE)
+        setting_btn.set_tooltip_text("設定を開く")
+        setting_btn.connect("clicked", lambda *_: (self.hide(), app.show_settings()))
+        tabs.pack_end(setting_btn, False, False, 0)
         outer.pack_start(tabs, False, False, 0)
+        self.status = Gtk.Label(label="", xalign=0)
+        self.status.get_style_context().add_class("clibor-status")
+        outer.pack_start(self.status, False, False, 0)
         self.search = Gtk.SearchEntry()
-        self.search.set_placeholder_text("検索（/ または Ctrl+F）")
-        self.search.set_margin_start(12)
-        self.search.set_margin_end(12)
-        self.search.set_margin_top(9)
-        self.search.set_margin_bottom(8)
+        self.search.set_placeholder_text("検索")
+        self.search.get_style_context().add_class("clibor-search")
+        self.search.set_margin_start(4)
+        self.search.set_margin_end(4)
+        self.search.set_margin_bottom(3)
         self.search.connect("search-changed", lambda *_: self.refresh())
         self.search.connect("key-press-event", self.on_search_key)
         outer.pack_start(self.search, False, False, 0)
         scroll = Gtk.ScrolledWindow()
         scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scroll.set_min_content_height(210)
-        scroll.set_max_content_height(470)
+        scroll.set_min_content_height(150)
+        scroll.set_max_content_height(670)
         self.list_box = Gtk.ListBox()
+        self.list_box.get_style_context().add_class("clibor-list")
         self.list_box.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self.list_box.set_activate_on_single_click(True)
         self.list_box.connect("row-activated", self.on_activated)
         scroll.add(self.list_box)
         outer.pack_start(scroll, True, True, 0)
-        footer = Gtk.Box()
-        footer.get_style_context().add_class("clibor-footer")
-        hint = Gtk.Label(label="↑↓ 選択  Enter 貼り付け  ←→ タブ  Esc 閉じる", xalign=0)
-        hint.get_style_context().add_class("clibor-subtle")
-        footer.pack_start(hint, True, True, 0)
-        outer.pack_end(footer, False, False, 0)
         self.show_all()
         self.hide()
 
     def _hide_on_focus_loss(self):
-        if self.get_visible() and not self.is_active():
+        if self.get_visible() and not self.is_active() and not self.app.config.values["sticky_popup"]:
             self.hide()
+        return False
+
+    def on_drag_start(self, _widget, event):
+        if event.type == Gdk.EventType.BUTTON_PRESS and event.button == 1:
+            self.begin_move_drag(event.button, int(event.x_root), int(event.y_root), event.time)
+            return True
+        return False
+
+    def on_configure(self, _widget, event):
+        if not self.get_visible():
+            return False
+        self._pending_position = (int(event.x), int(event.y))
+        if self.position_save_source is not None:
+            GLib.source_remove(self.position_save_source)
+        self.position_save_source = GLib.timeout_add(350, self.save_position)
+        return False
+
+    def save_position(self):
+        self.position_save_source = None
+        if not hasattr(self, "_pending_position"):
+            return False
+        x, y = self._pending_position
+        values = self.app.config.values
+        if (values.get("popup_x"), values.get("popup_y")) != (x, y):
+            values["popup_x"], values["popup_y"] = x, y
+            self.app.config.save()
         return False
 
     def open(self, tab="history"):
         self.set_size_request(self.app.config.values["popup_width"], -1)
-        self.set_default_size(self.app.config.values["popup_width"], 440)
+        self.set_default_size(self.app.config.values["popup_width"], 510)
         self.tab = tab
         self.search.set_text("")
         self.refresh()
@@ -250,8 +299,7 @@ class HistoryPopup(Gtk.Window):
         process_id = call_xdotool("getwindowpid", window_id) if window_id else None
         self.app.target_window = (window_id, process_id) if window_id and process_id else None
         self.show_all()
-        self.present()
-        # Keep the top-left in the active monitor, near the mouse pointer.
+        # Restore the dragged position, or initially place beside the pointer.
         display = Gdk.Display.get_default()
         seat = display.get_default_seat()
         pointer = seat.get_pointer()
@@ -259,9 +307,14 @@ class HistoryPopup(Gtk.Window):
         monitor = display.get_monitor_at_point(x, y)
         bounds = monitor.get_workarea()
         width = self.app.config.values["popup_width"]
-        height = max(350, min(545, self.get_allocated_height()))
-        self.move(max(bounds.x, min(x + 12, bounds.x + bounds.width - width)),
-                  max(bounds.y, min(y + 10, bounds.y + bounds.height - height)))
+        height = max(260, min(bounds.height, self.get_allocated_height()))
+        stored_x = self.app.config.values.get("popup_x")
+        stored_y = self.app.config.values.get("popup_y")
+        desired_x = stored_x if stored_x is not None else x + 12
+        desired_y = stored_y if stored_y is not None else y + 10
+        self.move(max(bounds.x, min(desired_x, bounds.x + bounds.width - width)),
+                  max(bounds.y, min(desired_y, bounds.y + bounds.height - height)))
+        self.present()
         if self.get_window():
             call_xdotool("windowactivate", "--sync", self.get_window().get_xid(), timeout=2.0)
         self.list_box.grab_focus()
@@ -286,33 +339,32 @@ class HistoryPopup(Gtk.Window):
         if self.tab == "history":
             entries = self.app.history.list(self.search.get_text(), self.app.config.values["visible_history"])
             self.rows = [(text, "履歴", text, None) for text, _date in entries]
+            total = self.app.history.count(self.search.get_text())
+            self.status.set_text(f"履歴1 (1〜{len(entries)}件 / {total}件中)")
         else:
             for template in self.app.config.values["templates"]:
                 expanded = render_template(template["body"])
                 if query in (template["name"] + " " + expanded).casefold():
                     self.rows.append((template["name"], expanded, expanded, template["id"]))
+            self.status.set_text(f"定型文 ({len(self.rows)}件)")
+        self.header_summary.set_text(
+            f"{self.app.config.values['visible_history']}件 / {self.app.config.values['max_history']}件")
         for index, (title, subtitle, _value, _id) in enumerate(self.rows):
             row = Gtk.ListBoxRow()
             row.get_style_context().add_class("clibor-row")
-            line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+            line.get_style_context().add_class("clibor-rowbox")
             row.add(line)
-            number = Gtk.Label(label=str(index + 1) if index < 9 else "·")
-            number.set_size_request(20, -1)
+            number = Gtk.Label(label=f"{shortcut_label(index)}:", xalign=0)
+            number.set_size_request(23, -1)
             number.get_style_context().add_class("clibor-number")
             line.pack_start(number, False, False, 0)
-            content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
-            main = Gtk.Label(label=" ".join(title.splitlines()), xalign=0)
+            label_text = title if self.tab == "history" else f"{title}  {subtitle}"
+            main = Gtk.Label(label=" ".join(label_text.splitlines()), xalign=0)
             main.set_ellipsize(Pango.EllipsizeMode.END)
-            main.set_max_width_chars(51)
+            main.set_max_width_chars(42)
             main.get_style_context().add_class("clibor-preview")
-            content.pack_start(main, False, False, 0)
-            if self.tab == "templates":
-                detail = Gtk.Label(label=" ".join(subtitle.splitlines()), xalign=0)
-                detail.set_ellipsize(Pango.EllipsizeMode.END)
-                detail.set_max_width_chars(55)
-                detail.get_style_context().add_class("clibor-subtle")
-                content.pack_start(detail, False, False, 0)
-            line.pack_start(content, True, True, 0)
+            line.pack_start(main, True, True, 0)
             self.list_box.add(row)
         if not self.rows:
             row = Gtk.ListBoxRow()
@@ -370,9 +422,11 @@ class HistoryPopup(Gtk.Window):
                 self.refresh()
             return True
         if not self.search.is_focus() and name and len(name) == 1:
-            if "1" <= name <= "9" and not event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK):
-                self.accept(int(name) - 1)
-                return True
+            if name.lower() in "1234567890abcdefghijklmnopqrstuvwxyz" and not event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK):
+                row_index = "1234567890abcdefghijklmnopqrstuvwxyz".index(name.lower())
+                if row_index < len(self.rows):
+                    self.accept(row_index)
+                    return True
             if name.isprintable() and not event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK):
                 self.search.grab_focus()
                 self.search.set_text(name)
@@ -404,12 +458,13 @@ class Settings(Gtk.Window):
         self.switch(body, "選択後に自動貼り付け", "auto_paste", "無効時はクリップボードへのコピーのみ")
         self.switch(body, "クリップボード履歴を監視", "clipboard_monitor", "停止中は履歴を追加しません")
         self.switch(body, "履歴をディスクに保存", "save_history", "変更は次回起動時に反映。既存の保存データは自動削除されません")
-        self.number(body, "Ctrl 2回の判定時間（ms）", "double_tap_ms", 200, 650, 25)
+        self.switch(body, "他のウィンドウを触っても閉じない", "sticky_popup", "Esc・再度ダブルタップ・項目選択で閉じます")
+        self.number(body, "修飾キー2回の判定時間（ms）", "double_tap_ms", 200, 800, 25)
         self.number(body, "自動貼り付けの待機時間（ms）", "paste_delay_ms", 40, 1500, 20)
         self.section(body, "履歴と表示")
         self.number(body, "保存する最大件数", "max_history", 10, 10000, 10)
         self.number(body, "画面に表示する件数", "visible_history", 5, 50, 1)
-        self.number(body, "ポップアップの横幅（px）", "popup_width", 340, 850, 10)
+        self.number(body, "ポップアップの横幅（px）", "popup_width", 260, 850, 10)
         self.section(body, "定型文・日時マクロ")
         helper = Gtk.Label(label="{date:%y%m%d} → 261111  /  {date:%y%m%d-%H%M} → 261111-1607 （例）", xalign=0)
         helper.set_line_wrap(True)
@@ -645,7 +700,9 @@ class Application:
             template = next((t for t in self.config.values["templates"] if t["id"] == tid), None)
             if template:
                 active = call_xdotool("getactivewindow")
-                self.insert(render_template(template["body"]), active)
+                pid = call_xdotool("getwindowpid", active) if active else None
+                target = (active, pid) if active and pid else None
+                self.insert(render_template(template["body"]), target)
         return False
 
     def quit(self):
@@ -657,7 +714,7 @@ class Application:
 def main():
     help_text = """Clibor Lite (GNOME 46 / X11)
 使用法: clibor-lite [run|show|templates|settings|paste-template ID|clear-history|stop]
-既定: run (通常は自動起動)。 Ctrl×2 で履歴を開きます。
+既定: run (通常は自動起動)。 Ctrl / Alt / Shift × 2 で履歴を開きます。
 日付直接貼付: clibor-lite paste-template date-short
 日時直接貼付: clibor-lite paste-template date-time
 """
