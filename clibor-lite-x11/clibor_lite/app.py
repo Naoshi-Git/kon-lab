@@ -16,7 +16,9 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GLib, Pango
 
-from .core import Config, DoubleModifierDetector, History, is_same_window, render_template, runtime_socket, shortcut_label
+from .core import (Config, DoubleModifierDetector, History, choose_popup_position,
+                   point_in_window, is_same_window, render_template, runtime_socket,
+                   shortcut_label)
 
 CSS = b"""
 window.clibor-window { background-color: transparent; }
@@ -24,8 +26,9 @@ window.clibor-window { background-color: transparent; }
 .clibor-header { background: #101010; border-top-left-radius: 7px; border-top-right-radius: 7px;
   color: #e4e4e4; padding: 3px 6px 1px 6px; font-size: 10px; }
 .clibor-tab { background: #1d1d1d; color: #f2f2f2; border: 1px solid #777; border-radius: 2px;
-  padding: 1px 5px; min-height: 19px; font-size: 10px; }
+  background-image: none; box-shadow: none; padding: 0 4px; min-height: 0; font-size: 10px; }
 .clibor-tab.active { background: #464646; color: #fff; }
+.clibor-tabs { background: #101010; padding: 1px 4px; }
 .clibor-status { background: #101010; color: #ededed; padding: 1px 5px; font-size: 9px; }
 .clibor-search { background: #bcbcbc; color: #090909; border: 0; border-radius: 1px;
   padding: 0 4px; min-height: 20px; font-size: 10px; }
@@ -122,9 +125,10 @@ def dispatch_to_existing(command):
 
 class XRecordListener(threading.Thread):
     """Passive XRecord listener; does not grab, block or log actual keystrokes."""
-    def __init__(self, on_trigger, timeout_ms):
+    def __init__(self, on_trigger, timeout_ms, on_button_press=None):
         super().__init__(name="xrecord-double-ctrl", daemon=True)
         self.on_trigger = on_trigger
+        self.on_button_press = on_button_press
         self.detector = DoubleModifierDetector(timeout_ms)
         self.error = None
 
@@ -150,6 +154,10 @@ class XRecordListener(threading.Thread):
             data = reply.data
             while data:
                 event, data = rq.EventField(None).parse_binary_value(data, recorder.display, None, None)
+                if event.type == X.ButtonPress:
+                    if self.on_button_press is not None and event.detail in (1, 2, 3):
+                        GLib.idle_add(self.on_button_press, int(event.root_x), int(event.root_y))
+                    continue
                 if event.type not in (X.KeyPress, X.KeyRelease):
                     continue
                 if self.detector.handle(event.type == X.KeyPress, event.detail, modifier_codes):
@@ -158,7 +166,7 @@ class XRecordListener(threading.Thread):
         context = recorder.record_create_context(0, [record.AllClients], [{
             "core_requests": (0, 0), "core_replies": (0, 0),
             "ext_requests": (0, 0, 0, 0), "ext_replies": (0, 0, 0, 0),
-            "delivered_events": (0, 0), "device_events": (X.KeyPress, X.KeyRelease),
+            "delivered_events": (0, 0), "device_events": (X.KeyPress, X.ButtonPress),
             "errors": (0, 0), "client_started": False, "client_died": False,
         }])
         try:
@@ -197,6 +205,7 @@ class HistoryPopup(Gtk.Window):
                 self.set_visual(visual)
         self.set_default_size(app.config.values["popup_width"], 510)
         self.position_save_source = None
+        self._drag_started = False
         self.connect("focus-out-event", lambda *_: GLib.idle_add(self._hide_on_focus_loss))
         self.connect("configure-event", self.on_configure)
         self.connect("key-press-event", self.on_key)
@@ -216,12 +225,13 @@ class HistoryPopup(Gtk.Window):
         drag_area.add(header)
         outer.pack_start(drag_area, False, False, 0)
         tabs = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
-        tabs.set_margin_start(4)
-        tabs.set_margin_end(4)
+        tabs.get_style_context().add_class("clibor-tabs")
+        tabs.set_size_request(-1, 23)
         self.tab_buttons = {}
         for key, title_text in (("history", "クリップボード"), ("templates", "定型文")):
             button = Gtk.Button(label=title_text)
             button.set_relief(Gtk.ReliefStyle.NONE)
+            button.set_size_request(-1, 21)
             button.get_style_context().add_class("clibor-tab")
             button.connect("clicked", lambda _b, k=key: self.select_tab(k))
             tabs.pack_start(button, True, True, 0)
@@ -265,12 +275,13 @@ class HistoryPopup(Gtk.Window):
 
     def on_drag_start(self, _widget, event):
         if event.type == Gdk.EventType.BUTTON_PRESS and event.button == 1:
+            self._drag_started = True
             self.begin_move_drag(event.button, int(event.x_root), int(event.y_root), event.time)
             return True
         return False
 
     def on_configure(self, _widget, event):
-        if not self.get_visible():
+        if not self.get_visible() or not self._drag_started:
             return False
         self._pending_position = (int(event.x), int(event.y))
         if self.position_save_source is not None:
@@ -289,7 +300,19 @@ class HistoryPopup(Gtk.Window):
             self.app.config.save()
         return False
 
+    def dismiss_on_outside_click(self, root_x, root_y):
+        if not self.get_visible():
+            return False
+        x, y = self.get_position()
+        width, height = self.get_size()
+        if not point_in_window(root_x, root_y, x, y, width, height):
+            self.hide()
+        return False
+
     def open(self, tab="history"):
+        # Always reopen at the pointer by default; stored coordinates remain
+        # available when users turn off "follow cursor" in Settings.
+        self._drag_started = False
         self.set_size_request(self.app.config.values["popup_width"], -1)
         self.set_default_size(self.app.config.values["popup_width"], 510)
         self.tab = tab
@@ -299,21 +322,32 @@ class HistoryPopup(Gtk.Window):
         process_id = call_xdotool("getwindowpid", window_id) if window_id else None
         self.app.target_window = (window_id, process_id) if window_id and process_id else None
         self.show_all()
-        # Restore the dragged position, or initially place beside the pointer.
+        # Allow a short popup for few results instead of a fixed 510px panel.
+        desired_height = min(730, max(125, 75 + 21 * max(1, len(self.rows))))
+        self.resize(self.app.config.values["popup_width"], desired_height)
+        # Use the active monitor workarea and measured/predicted popup size.
         display = Gdk.Display.get_default()
         seat = display.get_default_seat()
         pointer = seat.get_pointer()
         _screen, x, y = pointer.get_position()
         monitor = display.get_monitor_at_point(x, y)
         bounds = monitor.get_workarea()
-        width = self.app.config.values["popup_width"]
-        height = max(260, min(bounds.height, self.get_allocated_height()))
-        stored_x = self.app.config.values.get("popup_x")
-        stored_y = self.app.config.values.get("popup_y")
-        desired_x = stored_x if stored_x is not None else x + 12
-        desired_y = stored_y if stored_y is not None else y + 10
-        self.move(max(bounds.x, min(desired_x, bounds.x + bounds.width - width)),
-                  max(bounds.y, min(desired_y, bounds.y + bounds.height - height)))
+        width, height = self.get_size()
+        if self.app.config.values["popup_follow_cursor"]:
+            target_x, target_y = choose_popup_position(
+                x, y, width, height,
+                bounds.x, bounds.y, bounds.width, bounds.height)
+        else:
+            saved_x = self.app.config.values.get("popup_x")
+            saved_y = self.app.config.values.get("popup_y")
+            if saved_x is None or saved_y is None:
+                target_x, target_y = choose_popup_position(
+                    x, y, width, height,
+                    bounds.x, bounds.y, bounds.width, bounds.height)
+            else:
+                target_x = max(bounds.x, min(saved_x, max(bounds.x, bounds.x + bounds.width - width)))
+                target_y = max(bounds.y, min(saved_y, max(bounds.y, bounds.y + bounds.height - height)))
+        self.move(target_x, target_y)
         self.present()
         if self.get_window():
             call_xdotool("windowactivate", "--sync", self.get_window().get_xid(), timeout=2.0)
@@ -458,7 +492,8 @@ class Settings(Gtk.Window):
         self.switch(body, "選択後に自動貼り付け", "auto_paste", "無効時はクリップボードへのコピーのみ")
         self.switch(body, "クリップボード履歴を監視", "clipboard_monitor", "停止中は履歴を追加しません")
         self.switch(body, "履歴をディスクに保存", "save_history", "変更は次回起動時に反映。既存の保存データは自動削除されません")
-        self.switch(body, "他のウィンドウを触っても閉じない", "sticky_popup", "Esc・再度ダブルタップ・項目選択で閉じます")
+        self.switch(body, "外側をクリックしたら閉じる", "close_on_outside_click", "既定では外側クリックで閉じます")
+        self.switch(body, "カーソル位置を基準に開く", "popup_follow_cursor", "ポップアップ左下をカーソルに合わせ、画面端では自動反転")
         self.number(body, "修飾キー2回の判定時間（ms）", "double_tap_ms", 200, 800, 25)
         self.number(body, "自動貼り付けの待機時間（ms）", "paste_delay_ms", 40, 1500, 20)
         self.section(body, "履歴と表示")
@@ -519,8 +554,11 @@ class Settings(Gtk.Window):
         box = self.line(parent, label, help_text)
         sw = Gtk.Switch()
         sw.set_valign(Gtk.Align.CENTER)
-        sw.set_active(self.app.config.values[key])
-        sw.connect("notify::active", lambda widget, _prop: self.set_value(key, widget.get_active()))
+        sw.set_active(not self.app.config.values["sticky_popup"] if key == "close_on_outside_click"
+                      else self.app.config.values[key])
+        sw.connect("notify::active", lambda widget, _prop: self.set_value(
+            "sticky_popup" if key == "close_on_outside_click" else key,
+            not widget.get_active() if key == "close_on_outside_click" else widget.get_active()))
         box.pack_end(sw, False, False, 0)
 
     def number(self, parent, label, key, lower, upper, step):
@@ -634,7 +672,8 @@ class Application:
         self.settings = None
         self.ipc = IPC(self.dispatch)
         self.ipc.start()
-        self.key_listener = XRecordListener(self.toggle_popup, self.config.values["double_tap_ms"])
+        self.key_listener = XRecordListener(self.toggle_popup, self.config.values["double_tap_ms"],
+                                            self.popup.dismiss_on_outside_click)
         self.key_listener.start()
         # Capture clipboard content already present when the app starts.
         GLib.idle_add(self.read_clipboard)

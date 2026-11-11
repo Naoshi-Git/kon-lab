@@ -25,7 +25,8 @@ DEFAULT_SETTINGS = {
     "max_text_chars": 200000,
     "popup_width": 300,
     "paste_delay_ms": 200,
-    "sticky_popup": True,
+    "sticky_popup": False,
+    "popup_follow_cursor": True,
     "popup_x": None,
     "popup_y": None,
     "templates": DEFAULT_TEMPLATES,
@@ -71,7 +72,7 @@ def sanitize_settings(raw):
     cfg["templates"] = [dict(t) for t in DEFAULT_TEMPLATES]
     if not isinstance(raw, dict):
         return cfg
-    for key in ("auto_paste", "clipboard_monitor", "save_history", "sticky_popup"):
+    for key in ("auto_paste", "clipboard_monitor", "save_history", "sticky_popup", "popup_follow_cursor"):
         if isinstance(raw.get(key), bool):
             cfg[key] = raw[key]
     for key, low, high in (("double_tap_ms", 200, 800), ("max_history", 10, 10000),
@@ -133,6 +134,45 @@ def render_template(body, now=None):
         except ValueError:
             return m.group(0)
     return MACRO.sub(replacement, body)
+
+
+
+def choose_popup_position(cursor_x, cursor_y, width, height,
+                          work_x, work_y, work_width, work_height):
+    """Position a popup with the cursor at its bottom-left when possible.
+
+    Fall back to the other three cursor corners within the pointer monitor's
+    workarea; clamp if the popup cannot fit at any exact corner.
+    Coordinates are X11 root-space coordinates (including negative monitors).
+    """
+    left, top = work_x, work_y
+    right, bottom = work_x + work_width, work_y + work_height
+    choices = [
+        (cursor_x, cursor_y - height),            # popup bottom-left = pointer
+        (cursor_x - width, cursor_y - height),    # bottom-right
+        (cursor_x, cursor_y),                     # top-left
+        (cursor_x - width, cursor_y),             # top-right
+    ]
+    for px, py in choices:
+        if left <= px and top <= py and px + width <= right and py + height <= bottom:
+            return int(px), int(py)
+
+    # If no corner is an exact fit, pick the most visible one before clamping.
+    def area(pos):
+        px, py = pos
+        iw = max(0, min(right, px + width) - max(left, px))
+        ih = max(0, min(bottom, py + height) - max(top, py))
+        return iw * ih
+
+    best = max(choices, key=area)  # stable order preserves bottom-left priority
+    max_x = max(left, right - width)
+    max_y = max(top, bottom - height)
+    return int(max(left, min(best[0], max_x))), int(max(top, min(best[1], max_y)))
+
+
+def point_in_window(px, py, x, y, width, height):
+    """Determine whether a global mouse press was within popup bounds."""
+    return x <= px < x + width and y <= py < y + height
 
 
 class DoubleModifierDetector:
