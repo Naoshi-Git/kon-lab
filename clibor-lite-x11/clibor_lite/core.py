@@ -30,6 +30,13 @@ DEFAULT_SETTINGS = {
 MACRO = re.compile(r"\{date:([^{}]+)\}")
 
 
+def is_same_window(window_id, process_id, active_window_id, active_process_id):
+    """Return true only when the captured X11 window is still the active owner."""
+    return bool(window_id and process_id and active_window_id and active_process_id
+                and str(window_id) == str(active_window_id)
+                and str(process_id) == str(active_process_id))
+
+
 def config_dir():
     return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / APP
 

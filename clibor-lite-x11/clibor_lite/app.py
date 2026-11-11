@@ -16,7 +16,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GLib, Pango
 
-from .core import Config, DoubleCtrlDetector, History, render_template, runtime_socket
+from .core import Config, DoubleCtrlDetector, History, is_same_window, render_template, runtime_socket
 
 CSS = b"""
 .clibor-popup { background: #fff; border: 1px solid #aeb6c2; border-radius: 9px; }
@@ -246,7 +246,9 @@ class HistoryPopup(Gtk.Window):
         self.tab = tab
         self.search.set_text("")
         self.refresh()
-        self.app.target_window = call_xdotool("getactivewindow")
+        window_id = call_xdotool("getactivewindow")
+        process_id = call_xdotool("getwindowpid", window_id) if window_id else None
+        self.app.target_window = (window_id, process_id) if window_id and process_id else None
         self.show_all()
         self.present()
         # Keep the top-left in the active monitor, near the mouse pointer.
@@ -612,8 +614,15 @@ class Application:
             GLib.timeout_add(self.config.values["paste_delay_ms"], self._paste, target_window)
 
     def _paste(self, target_window):
-        # Only focus windows captured before the popup, never the settings window.
-        if call_xdotool("windowactivate", "--sync", target_window, timeout=2.0) is not None:
+        # Fail closed if the original window was destroyed or its XID was reused.
+        window_id, process_id = target_window
+        if call_xdotool("getwindowpid", window_id) != process_id:
+            return False
+        if call_xdotool("windowactivate", "--sync", window_id, timeout=2.0) is None:
+            return False
+        active_id = call_xdotool("getactivewindow")
+        active_pid = call_xdotool("getwindowpid", active_id) if active_id else None
+        if is_same_window(window_id, process_id, active_id, active_pid):
             call_xdotool("key", "--clearmodifiers", "ctrl+v", timeout=2.0)
         return False
 

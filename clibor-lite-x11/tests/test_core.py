@@ -5,7 +5,8 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
-from clibor_lite.core import Config, DoubleCtrlDetector, History, render_template, sanitize_settings
+from clibor_lite.core import (Config, DoubleCtrlDetector, History, is_same_window,
+                              render_template, sanitize_settings)
 
 
 class DetectorTests(unittest.TestCase):
@@ -66,6 +67,17 @@ class DetectorTests(unittest.TestCase):
         d.handle(False, 37, {37}, 1.03)
         d.handle(True, 37, {37}, 1.15)
         self.assertTrue(d.handle(False, 37, {37}, 1.18))
+
+
+class PasteTargetTests(unittest.TestCase):
+    def test_accepts_only_original_window_and_process(self):
+        self.assertTrue(is_same_window("4194305", "912", "4194305", "912"))
+        self.assertFalse(is_same_window("4194305", "912", "4194306", "912"))
+        self.assertFalse(is_same_window("4194305", "912", "4194305", "913"))
+
+    def test_missing_window_metadata_fails_closed(self):
+        self.assertFalse(is_same_window("4194305", "912", None, None))
+        self.assertFalse(is_same_window("4194305", None, "4194305", "912"))
 
 
 class TemplateTests(unittest.TestCase):
