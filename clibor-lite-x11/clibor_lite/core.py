@@ -19,15 +19,23 @@ DEFAULT_SETTINGS = {
     "auto_paste": True,
     "clipboard_monitor": True,
     "save_history": True,
-    "double_tap_ms": 350,
+    "double_tap_ms": 500,
     "max_history": 1000,
-    "visible_history": 25,
+    "visible_history": 30,
     "max_text_chars": 200000,
-    "popup_width": 440,
-    "paste_delay_ms": 160,
+    "popup_width": 300,
+    "paste_delay_ms": 200,
+    "sticky_popup": True,
+    "popup_x": None,
+    "popup_y": None,
     "templates": DEFAULT_TEMPLATES,
 }
 MACRO = re.compile(r"\{date:([^{}]+)\}")
+SHORTCUT_KEYS = "1234567890abcdefghijklmnopqrstuvwxyz"
+
+
+def shortcut_label(index):
+    return SHORTCUT_KEYS[index] if 0 <= index < len(SHORTCUT_KEYS) else "·"
 
 
 def is_same_window(window_id, process_id, active_window_id, active_process_id):
@@ -63,14 +71,17 @@ def sanitize_settings(raw):
     cfg["templates"] = [dict(t) for t in DEFAULT_TEMPLATES]
     if not isinstance(raw, dict):
         return cfg
-    for key in ("auto_paste", "clipboard_monitor", "save_history"):
+    for key in ("auto_paste", "clipboard_monitor", "save_history", "sticky_popup"):
         if isinstance(raw.get(key), bool):
             cfg[key] = raw[key]
-    for key, low, high in (("double_tap_ms", 200, 650), ("max_history", 10, 10000),
+    for key, low, high in (("double_tap_ms", 200, 800), ("max_history", 10, 10000),
                            ("visible_history", 5, 50), ("max_text_chars", 100, 1000000),
-                           ("popup_width", 340, 850), ("paste_delay_ms", 40, 1500)):
+                           ("popup_width", 260, 850), ("paste_delay_ms", 40, 1500)):
         if type(raw.get(key)) is int:
             cfg[key] = max(low, min(high, raw[key]))
+    for key in ("popup_x", "popup_y"):
+        if raw.get(key) is None or type(raw.get(key)) is int:
+            cfg[key] = raw.get(key)
     ts = raw.get("templates")
     if isinstance(ts, list):
         seen = set()
@@ -124,25 +135,27 @@ def render_template(body, now=None):
     return MACRO.sub(replacement, body)
 
 
-class DoubleCtrlDetector:
-    """Detect two complete, unchorded presses of the same Control key."""
-    def __init__(self, timeout_ms=350):
+class DoubleModifierDetector:
+    """Recognize two clean press/release cycles of the same Ctrl/Alt/Shift key."""
+    def __init__(self, timeout_ms=500):
         self.timeout_ms = timeout_ms
         self.last_release = None
         self.last_side = None
         self.pressed = set()
         self.other_down = set()
         self.chord = False
-        self.ctrl_start = 0.0
+        self.modifier_start = 0.0
+        self.active_side = None
 
-    def handle(self, is_down, keycode, ctrl_codes, when=None):
+    def handle(self, is_down, keycode, modifier_codes, when=None):
         when = time.monotonic() if when is None else when
-        if keycode not in ctrl_codes:
+        if keycode not in modifier_codes:
             if is_down:
                 self.other_down.add(keycode)
                 if self.pressed:
                     self.chord = True
                 self.last_release = None
+                self.last_side = None
             else:
                 self.other_down.discard(keycode)
             return False
@@ -152,7 +165,8 @@ class DoubleCtrlDetector:
                     self.chord = True
                 else:
                     self.chord = bool(self.other_down)
-                    self.ctrl_start = when
+                    self.modifier_start = when
+                    self.active_side = keycode
                 self.pressed.add(keycode)
             return False
         if keycode not in self.pressed:
@@ -160,19 +174,23 @@ class DoubleCtrlDetector:
         self.pressed.remove(keycode)
         if self.pressed:
             return False
-        clean = not self.chord and when - self.ctrl_start < 0.6
+        clean = not self.chord and self.active_side == keycode and when - self.modifier_start < 0.6
         self.chord = False
+        self.active_side = None
         if not clean:
             self.last_release = None
+            self.last_side = None
             return False
-        if self.last_release is not None and self.last_side == keycode and \
-                (when - self.last_release) * 1000 <= self.timeout_ms:
+        if self.last_release is not None and self.last_side == keycode and (when - self.last_release) * 1000 <= self.timeout_ms:
             self.last_release = None
             self.last_side = None
             return True
         self.last_release = when
         self.last_side = keycode
         return False
+
+
+DoubleCtrlDetector = DoubleModifierDetector
 
 
 class History:
@@ -202,6 +220,13 @@ class History:
     def trim(self):
         self.db.execute("DELETE FROM items WHERE text NOT IN "
                         "(SELECT text FROM items ORDER BY copied DESC, rowid DESC LIMIT ?)", (self.limit,))
+
+    def count(self, query=""):
+        if query:
+            rows = self.db.execute("SELECT text FROM items").fetchall()
+            q = query.casefold()
+            return sum(1 for (text,) in rows if q in text.casefold())
+        return self.db.execute("SELECT COUNT(*) FROM items").fetchone()[0]
 
     def list(self, query="", limit=25):
         if query:

@@ -5,7 +5,7 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
-from clibor_lite.core import (Config, DoubleCtrlDetector, History, is_same_window,
+from clibor_lite.core import (Config, DoubleCtrlDetector, History, is_same_window, shortcut_label,
                               render_template, sanitize_settings)
 
 
@@ -85,6 +85,44 @@ class DetectorTests(unittest.TestCase):
         self.assertTrue(d.handle(False, 37, {37}, 1.18))
 
 
+class ModifierExpansionTests(unittest.TestCase):
+    def test_alt_double_tap(self):
+        d = DoubleCtrlDetector(500)
+        keys = {37, 105, 64, 108, 50, 62}
+        d.handle(True, 64, keys, 1.0)
+        d.handle(False, 64, keys, 1.04)
+        d.handle(True, 64, keys, 1.16)
+        self.assertTrue(d.handle(False, 64, keys, 1.20))
+
+    def test_shift_double_tap(self):
+        d = DoubleCtrlDetector(500)
+        keys = {37, 105, 64, 108, 50, 62}
+        d.handle(True, 50, keys, 1.0)
+        d.handle(False, 50, keys, 1.04)
+        d.handle(True, 50, keys, 1.13)
+        self.assertTrue(d.handle(False, 50, keys, 1.17))
+
+    def test_mixed_modifiers_do_not_trigger(self):
+        d = DoubleCtrlDetector(500)
+        keys = {37, 64, 50}
+        d.handle(True, 37, keys, 1.0)
+        d.handle(False, 37, keys, 1.05)
+        d.handle(True, 64, keys, 1.15)
+        self.assertFalse(d.handle(False, 64, keys, 1.20))
+
+    def test_shortcuts_match_clibor_row_labels(self):
+        self.assertEqual([shortcut_label(i) for i in (0, 8, 9, 10, 29)],
+                         ["1", "9", "0", "a", "t"])
+
+    def test_compact_defaults_and_position_sanitizer(self):
+        cfg = sanitize_settings({"popup_x": 123, "popup_y": -25, "sticky_popup": False})
+        self.assertEqual(cfg["popup_width"], 300)
+        self.assertEqual(cfg["visible_history"], 30)
+        self.assertEqual(cfg["double_tap_ms"], 500)
+        self.assertEqual((cfg["popup_x"], cfg["popup_y"]), (123, -25))
+        self.assertFalse(cfg["sticky_popup"])
+
+
 class PasteTargetTests(unittest.TestCase):
     def test_accepts_only_original_window_and_process(self):
         self.assertTrue(is_same_window("4194305", "912", "4194305", "912"))
@@ -148,7 +186,7 @@ class StorageTests(unittest.TestCase):
         c = sanitize_settings({'max_history': -10, 'double_tap_ms': 20000, 'save_history': 'no',
                                'templates': [{'name':'missing-id', 'body':'a'}]})
         self.assertEqual(c['max_history'], 10)
-        self.assertEqual(c['double_tap_ms'], 650)
+        self.assertEqual(c['double_tap_ms'], 800)
         self.assertTrue(c['save_history'])
         self.assertEqual(c['templates'], [])
 
