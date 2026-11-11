@@ -76,6 +76,26 @@ class DetectorTests(unittest.TestCase):
         self.assertFalse(d.handle(False, 37, {37}, 1.25))
         d.handle(False, 50, {37}, 1.3)
 
+    def test_alt_tab_cannot_trigger(self):
+        d = self.new()
+        keys = {64, 108}
+        d.handle(True, 64, keys, 1.0)
+        d.handle(True, 23, keys, 1.02)
+        d.handle(False, 23, keys, 1.05)
+        self.assertFalse(d.handle(False, 64, keys, 1.08))
+        d.handle(True, 64, keys, 1.2)
+        self.assertFalse(d.handle(False, 64, keys, 1.25))
+
+    def test_shift_letter_cannot_trigger(self):
+        d = self.new()
+        keys = {50, 62}
+        d.handle(True, 50, keys, 1.0)
+        d.handle(True, 38, keys, 1.02)
+        d.handle(False, 38, keys, 1.05)
+        self.assertFalse(d.handle(False, 50, keys, 1.08))
+        d.handle(True, 50, keys, 1.2)
+        self.assertFalse(d.handle(False, 50, keys, 1.25))
+
     def test_repeat_press_not_accepted(self):
         d = self.new()
         d.handle(True, 37, {37}, 1)
@@ -94,6 +114,14 @@ class ModifierExpansionTests(unittest.TestCase):
         d.handle(True, 64, keys, 1.16)
         self.assertTrue(d.handle(False, 64, keys, 1.20))
 
+    def test_right_alt_double_tap(self):
+        d = DoubleCtrlDetector(500)
+        keys = {37, 105, 64, 108, 50, 62}
+        d.handle(True, 108, keys, 1.0)
+        d.handle(False, 108, keys, 1.04)
+        d.handle(True, 108, keys, 1.16)
+        self.assertTrue(d.handle(False, 108, keys, 1.20))
+
     def test_shift_double_tap(self):
         d = DoubleCtrlDetector(500)
         keys = {37, 105, 64, 108, 50, 62}
@@ -101,6 +129,14 @@ class ModifierExpansionTests(unittest.TestCase):
         d.handle(False, 50, keys, 1.04)
         d.handle(True, 50, keys, 1.13)
         self.assertTrue(d.handle(False, 50, keys, 1.17))
+
+    def test_right_shift_double_tap(self):
+        d = DoubleCtrlDetector(500)
+        keys = {37, 105, 64, 108, 50, 62}
+        d.handle(True, 62, keys, 1.0)
+        d.handle(False, 62, keys, 1.04)
+        d.handle(True, 62, keys, 1.13)
+        self.assertTrue(d.handle(False, 62, keys, 1.17))
 
     def test_mixed_modifiers_do_not_trigger(self):
         d = DoubleCtrlDetector(500)
