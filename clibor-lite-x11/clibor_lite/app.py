@@ -378,6 +378,10 @@ class HistoryPopup(Gtk.Window):
         width = self.app.config.values["popup_width"]
         desired_height = min(bounds.height, 730, max(170, 85 + 21 * max(1, len(self.rows))))
         height = desired_height
+        # A fixed Gtk.Window ignores resize() after its first map unless the
+        # requested minimum size is updated as well. Set this before mapping
+        # so 30 history rows are visible on the first frame.
+        self.set_size_request(width, height)
         self.set_default_size(width, height)
         self.resize(width, height)
         if self.app.config.values["popup_follow_cursor"]:
@@ -415,6 +419,7 @@ class HistoryPopup(Gtk.Window):
             display = Gdk.Display.get_default()
             bounds = display.get_monitor_at_point(_x, _y).get_workarea()
             target_height = min(bounds.height, 730, max(170, 85 + 21 * max(1, len(self.rows))))
+            self.set_size_request(self.app.config.values["popup_width"], target_height)
             self.resize(self.app.config.values["popup_width"], target_height)
         self.list_box.grab_focus()
 

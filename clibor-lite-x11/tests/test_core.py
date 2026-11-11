@@ -107,10 +107,10 @@ class DetectorTests(unittest.TestCase):
 
 
 class ModifierExpansionTests(unittest.TestCase):
-    def test_modifier_double_tap_selection_defaults_to_ctrl_only(self):
+    def test_modifier_double_tap_selection_defaults_to_alt_only(self):
         cfg = sanitize_settings({})
         groups = {"ctrl": {37, 105}, "alt": {64, 108, 92}, "shift": {50, 62}}
-        self.assertEqual(selected_modifier_codes(groups, cfg), {37, 105})
+        self.assertEqual(selected_modifier_codes(groups, cfg), {64, 108, 92})
 
     def test_modifier_double_tap_selection_is_configurable(self):
         cfg = sanitize_settings({"hotkey_ctrl": False, "hotkey_alt": True, "hotkey_shift": True})
