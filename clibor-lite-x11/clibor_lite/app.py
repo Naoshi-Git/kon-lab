@@ -262,6 +262,8 @@ class HistoryPopup(Gtk.Window):
         height = max(350, min(545, self.get_allocated_height()))
         self.move(max(bounds.x, min(x + 12, bounds.x + bounds.width - width)),
                   max(bounds.y, min(y + 10, bounds.y + bounds.height - height)))
+        if self.get_window():
+            call_xdotool("windowactivate", "--sync", self.get_window().get_xid(), timeout=2.0)
         self.list_box.grab_focus()
         row = self.list_box.get_row_at_index(0)
         if row:
