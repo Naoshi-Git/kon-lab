@@ -1,0 +1,44 @@
+# Clibor Lite X11 · PR handoff / 改善計画
+
+## リポジトリと位置づけ
+
+- Repository: `Naoshi-Git/kon-lab`（公開）
+- Directory: `clibor-lite-x11/`
+- State: **Draft PR / 検証前の試作版**。`main` へのマージは実機受け入れ試験終了後。
+- Target: `labadmin@kon-cryo-02`、Ubuntu GNOME Shell 46.0、X11。Waylandは対象外。
+- Source of truth: `README.md`（機能と導入）、`LOCAL_AGENT_VERIFICATION.md`（受け入れ基準）、`AGENT_HANDOFF.md`（手順）。
+
+## Local Agent の実施順序
+
+1. 当該PRのブランチをチェックアウトし、ベースの `main` と差分を確認。**ZIPから上書きせず、Git管理下のソースを直接修正**する。
+2. ソースを静的レビューする。特に `XRecordListener.run` のキー処理、`DoubleCtrlDetector` のショートカット干渉、`Application.insert/_paste` の貼り付け先・フォーカス、IPC ソケット、履歴保存のプライバシーを優先。
+3. `bash scripts/diagnose.sh`、`PYTHONPATH=. /usr/bin/python3 -m unittest discover -s tests -v`、`/usr/bin/python3 -m compileall -q clibor_lite` を実施。既存ショートカットと常駐アプリとの衝突を調査。
+4. ユーザーから端末変更・`sudo apt` 導入の許可を得たうえで `bash install.sh` を実行。`Ctrl` × 2、コピー履歴、検索、日時定型文、自動貼り付けを複数アプリで実機検証。
+5. P0/P1を修正し、テストを追加し、**同じブランチにコミットして既存PRを更新**する。PRを閉じたり別PRを乱立させたりしない。
+6. `LOCAL_AGENT_VERIFICATION.md` のチェック表を実施結果で更新し、PRコメントに P0/P1/P2、変更点、環境、手順、CPU/RSS、残存リスクを書く。mergeはユーザー判断。
+
+## 初期版の確認事項（未解決）
+
+| 優先度 | 対象 | 検証・改善指示 |
+|---|---|---|
+| P0 | Ctrlダブルタップ | 右Ctrl/左Ctrl両方で発火し、Ctrl+C/V/A・長押し・他キーとの混在で誤発火しない |
+| P0 | 自動貼り付け | 選択前にフォーカスしていた正しい窓へだけ貼る。切り替え中・破棄済みウィンドウでは安全に中止 |
+| P0 | 履歴プライバシー | X11クリップボードにはパスワードや個人情報が入り得る。暗号化なしの永続保存・除外なしは明確に通知し、監視停止、削除の挙動を確認 |
+| P1 | GTK/X11互換性 | GNOME 46 / X11 でポップアップの焦点・配置・行操作・Scroll・検索・日本語表示を検証 |
+| P1 | GNOMEホットキー | `Ctrl+Alt+1/2` の競合・登録・解除で他のカスタムキーを破壊しない |
+| P1 | 起動と再起動 | 連続起動、stale socket、ログアウト、X11切断、設定反映、ログでの個人データ漏えい防止 |
+| P2 | 使い勝手 | Cliborらしい軽さ・UI密度、デジタル庁デザインシステムを参考にした設定の可読性 |
+| P2 | 性能 | アイドルCPUとRSS、コピー時負荷、履歴検索の遅延を実測。比較対象としてCopyQも任意測定 |
+
+## セキュリティ・公開リポジトリ運用
+
+- 履歴DB、`config.json`、ログ、画面録画（コピー内容が映るもの）、スクリーンショットに秘密情報が含まれる場合は、**GitHubへpushしない**。
+- クリップボードの実データはテスト用ダミー文字列に限定。実験データ・認証トークンをPRに貼らない。
+- 既存ショートカットと自動起動の状態を保存し、失敗時は自動起動を止めて復帰できる状態にする。
+- PRは実機テストとP0/P1対応が済むまでDraftのまま維持する。
+
+## 終了判定
+
+- All P0 = PASS / P1 = PASS（未対応事項には理由と代替策）
+- 機能と負荷の実測値、再現可能なテストコマンド、差分の説明をPR上で確認できる
+- Local Agentの報告をユーザーがレビュー後、ready-for-review / mergeを判断する
