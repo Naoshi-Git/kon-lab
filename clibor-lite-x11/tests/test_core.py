@@ -20,6 +20,22 @@ class DetectorTests(unittest.TestCase):
         self.assertFalse(d.handle(True, 37, {37, 105}, 1.2))
         self.assertTrue(d.handle(False, 37, {37, 105}, 1.25))
 
+    def test_two_clean_right_ctrl_taps(self):
+        d = self.new()
+        self.assertFalse(d.handle(True, 105, {37, 105}, 1.0))
+        self.assertFalse(d.handle(False, 105, {37, 105}, 1.05))
+        self.assertFalse(d.handle(True, 105, {37, 105}, 1.2))
+        self.assertTrue(d.handle(False, 105, {37, 105}, 1.25))
+
+    def test_holding_both_ctrl_keys_is_a_chord(self):
+        d = self.new()
+        self.assertFalse(d.handle(True, 37, {37, 105}, 1.0))
+        self.assertFalse(d.handle(True, 105, {37, 105}, 1.02))
+        self.assertFalse(d.handle(False, 37, {37, 105}, 1.05))
+        self.assertFalse(d.handle(False, 105, {37, 105}, 1.08))
+        self.assertFalse(d.handle(True, 37, {37, 105}, 1.2))
+        self.assertFalse(d.handle(False, 37, {37, 105}, 1.25))
+
     def test_too_slow(self):
         d = self.new()
         for t in (1., 1.05, 1.6):
