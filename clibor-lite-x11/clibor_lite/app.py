@@ -271,7 +271,10 @@ class HistoryPopup(Gtk.Window):
         self.hide()
 
     def _hide_on_focus_loss(self):
-        if self.get_visible() and not self.is_active() and not self.app.config.values["sticky_popup"]:
+        # The window can momentarily lose focus during the initial X11 map.
+        if (self.get_visible() and not self.is_active()
+                and not self.app.config.values["sticky_popup"]
+                and GLib.get_monotonic_time() >= getattr(self, "_focus_grace_until", 0)):
             self.hide()
         return False
 
@@ -316,19 +319,16 @@ class HistoryPopup(Gtk.Window):
         # available when users turn off "follow cursor" in Settings.
         self._drag_started = False
         self.set_size_request(self.app.config.values["popup_width"], -1)
-        self.set_default_size(self.app.config.values["popup_width"], 510)
         self.tab = tab
         self.search.set_text("")
         self.refresh()
         window_id = call_xdotool("getactivewindow")
         process_id = call_xdotool("getwindowpid", window_id) if window_id else None
         self.app.target_window = (window_id, process_id) if window_id and process_id else None
-        self.show_all()
-        # Allow a short popup for few results instead of a fixed 510px panel.
-        # Use the actual preferred height where available, then bound by workarea.
-        desired_height = min(730, max(145, 85 + 21 * max(1, len(self.rows))))
-        self.resize(self.app.config.values["popup_width"], desired_height)
-        # Use the active monitor workarea and the requested popup dimensions.
+        # Derive placement before displaying the window to avoid a jump from
+        # a previous position during GTK's initial map.
+        self._focus_grace_until = GLib.get_monotonic_time() + 350000
+        # Use the active monitor workarea and requested popup dimensions.
         display = Gdk.Display.get_default()
         seat = display.get_default_seat()
         pointer = seat.get_pointer()
@@ -336,7 +336,10 @@ class HistoryPopup(Gtk.Window):
         monitor = display.get_monitor_at_point(x, y)
         bounds = monitor.get_workarea()
         width = self.app.config.values["popup_width"]
-        height = min(bounds.height, desired_height)
+        desired_height = min(bounds.height, 730, max(170, 85 + 21 * max(1, len(self.rows))))
+        height = desired_height
+        self.set_default_size(width, height)
+        self.resize(width, height)
         if self.app.config.values["popup_follow_cursor"]:
             target_x, target_y = choose_popup_position(
                 x, y, width, height,
@@ -352,6 +355,7 @@ class HistoryPopup(Gtk.Window):
                 target_x = max(bounds.x, min(saved_x, max(bounds.x, bounds.x + bounds.width - width)))
                 target_y = max(bounds.y, min(saved_y, max(bounds.y, bounds.y + bounds.height - height)))
         self.move(target_x, target_y)
+        self.show_all()
         self.present()
         if self.get_window():
             call_xdotool("windowactivate", "--sync", self.get_window().get_xid(), timeout=2.0)
@@ -364,6 +368,13 @@ class HistoryPopup(Gtk.Window):
         self.tab = key
         self.search.set_text("")
         self.refresh()
+        # The templates list is often much shorter than history.
+        if self.get_visible():
+            _x, _y = self.get_position()
+            display = Gdk.Display.get_default()
+            bounds = display.get_monitor_at_point(_x, _y).get_workarea()
+            target_height = min(bounds.height, 730, max(170, 85 + 21 * max(1, len(self.rows))))
+            self.resize(self.app.config.values["popup_width"], target_height)
         self.list_box.grab_focus()
 
     def refresh(self):
