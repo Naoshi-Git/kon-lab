@@ -1,0 +1,24 @@
+name: Clibor Lite X11 core tests
+
+on:
+  pull_request:
+    paths:
+      - 'clibor-lite-x11/**'
+      - '.github/workflows/clibor-lite-x11-tests.yml'
+  push:
+    paths:
+      - 'clibor-lite-x11/**'
+      - '.github/workflows/clibor-lite-x11-tests.yml'
+
+jobs:
+  core-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python version
+        run: python3 --version
+      - name: Compile and unittest (no X11/GTK required)
+        working-directory: clibor-lite-x11
+        run: |
+          python3 -m compileall -q clibor_lite
+          PYTHONPATH=. python3 -m unittest discover -s tests -v
