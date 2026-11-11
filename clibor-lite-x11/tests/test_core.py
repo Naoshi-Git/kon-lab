@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from clibor_lite.core import (Config, DoubleCtrlDetector, History, is_same_window, shortcut_label,
-                              render_template, sanitize_settings)
+                              choose_popup_position, point_in_window, render_template, sanitize_settings)
 
 
 class DetectorTests(unittest.TestCase):
@@ -157,6 +157,51 @@ class ModifierExpansionTests(unittest.TestCase):
         self.assertEqual(cfg["double_tap_ms"], 500)
         self.assertEqual((cfg["popup_x"], cfg["popup_y"]), (123, -25))
         self.assertFalse(cfg["sticky_popup"])
+
+
+
+class PopupGeometryTests(unittest.TestCase):
+    def pos(self, cx, cy, width=300, height=350, work=(0, 0, 1920, 1080)):
+        return choose_popup_position(cx, cy, width, height, *work)
+
+    def test_cursor_is_bottom_left_by_default(self):
+        self.assertEqual(self.pos(400, 800), (400, 450))
+
+    def test_flip_to_bottom_right_at_right_edge(self):
+        self.assertEqual(self.pos(1900, 800), (1600, 450))
+
+    def test_flip_to_top_left_near_top_edge(self):
+        self.assertEqual(self.pos(400, 30), (400, 30))
+
+    def test_flip_to_top_right_at_top_right_corner(self):
+        self.assertEqual(self.pos(1900, 30), (1600, 30))
+
+    def test_negative_origin_multi_monitor(self):
+        self.assertEqual(self.pos(-1450, 800, work=(-1920, 0, 1920, 1080)),
+                         (-1450, 450))
+
+    def test_clamp_when_no_exact_corner_can_fit(self):
+        x, y = self.pos(50, 50, width=500, height=500, work=(0, 0, 320, 240))
+        self.assertEqual((x, y), (0, 0))
+
+    def test_click_inside_and_outside_bounds(self):
+        self.assertTrue(point_in_window(200, 200, 100, 100, 300, 200))
+        self.assertFalse(point_in_window(99, 200, 100, 100, 300, 200))
+        self.assertFalse(point_in_window(400, 200, 100, 100, 300, 200))
+
+    def test_old_sticky_config_is_migrated_to_outside_click_default(self):
+        with tempfile.TemporaryDirectory() as d:
+            from pathlib import Path
+            path = Path(d) / "config.json"
+            path.write_text('{"sticky_popup": true, "popup_width": 400}', encoding="utf-8")
+            config = Config(path)
+            self.assertFalse(config.values["sticky_popup"])
+            self.assertTrue(config.values["popup_follow_cursor"])
+            self.assertEqual(config.values["popup_width"], 400)
+            config.save()
+            config.values["sticky_popup"] = True
+            config.save()
+            self.assertTrue(Config(path).values["sticky_popup"])
 
 
 class PasteTargetTests(unittest.TestCase):

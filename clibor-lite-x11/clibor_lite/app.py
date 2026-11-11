@@ -145,7 +145,9 @@ class XRecordListener(threading.Thread):
         modifier_codes = {control.keysym_to_keycode(ks) for ks in (
             XK.XK_Control_L, XK.XK_Control_R,
             XK.XK_Alt_L, XK.XK_Alt_R,
-            XK.XK_Shift_L, XK.XK_Shift_R)}
+            XK.XK_Shift_L, XK.XK_Shift_R,
+            getattr(XK, "XK_ISO_Level3_Shift", 0),
+            getattr(XK, "XK_Mode_switch", 0))}
         modifier_codes.discard(0)
 
         def callback(reply):
@@ -256,7 +258,7 @@ class HistoryPopup(Gtk.Window):
         outer.pack_start(self.search, False, False, 0)
         scroll = Gtk.ScrolledWindow()
         scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scroll.set_min_content_height(150)
+        scroll.set_min_content_height(60)
         scroll.set_max_content_height(670)
         self.list_box = Gtk.ListBox()
         self.list_box.get_style_context().add_class("clibor-list")
@@ -301,7 +303,7 @@ class HistoryPopup(Gtk.Window):
         return False
 
     def dismiss_on_outside_click(self, root_x, root_y):
-        if not self.get_visible():
+        if not self.get_visible() or self.app.config.values["sticky_popup"]:
             return False
         x, y = self.get_position()
         width, height = self.get_size()
@@ -323,16 +325,18 @@ class HistoryPopup(Gtk.Window):
         self.app.target_window = (window_id, process_id) if window_id and process_id else None
         self.show_all()
         # Allow a short popup for few results instead of a fixed 510px panel.
-        desired_height = min(730, max(125, 75 + 21 * max(1, len(self.rows))))
+        # Use the actual preferred height where available, then bound by workarea.
+        desired_height = min(730, max(145, 85 + 21 * max(1, len(self.rows))))
         self.resize(self.app.config.values["popup_width"], desired_height)
-        # Use the active monitor workarea and measured/predicted popup size.
+        # Use the active monitor workarea and the requested popup dimensions.
         display = Gdk.Display.get_default()
         seat = display.get_default_seat()
         pointer = seat.get_pointer()
         _screen, x, y = pointer.get_position()
         monitor = display.get_monitor_at_point(x, y)
         bounds = monitor.get_workarea()
-        width, height = self.get_size()
+        width = self.app.config.values["popup_width"]
+        height = min(bounds.height, desired_height)
         if self.app.config.values["popup_follow_cursor"]:
             target_x, target_y = choose_popup_position(
                 x, y, width, height,

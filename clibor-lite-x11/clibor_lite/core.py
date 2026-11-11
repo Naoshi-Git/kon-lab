@@ -102,7 +102,13 @@ class Config:
     def __init__(self, path=None):
         self.path = Path(path) if path else config_dir() / "config.json"
         try:
-            self.values = sanitize_settings(json.loads(self.path.read_text(encoding="utf-8")))
+            raw = json.loads(self.path.read_text(encoding="utf-8"))
+            # Existing v0.2 configs used sticky_popup=True by default.
+            # Migrate only those old configurations to the new outside-click default.
+            if isinstance(raw, dict) and "popup_follow_cursor" not in raw:
+                raw = dict(raw)
+                raw.pop("sticky_popup", None)
+            self.values = sanitize_settings(raw)
         except (OSError, ValueError, UnicodeError):
             self.values = sanitize_settings({})
 
