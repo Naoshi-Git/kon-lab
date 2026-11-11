@@ -18,7 +18,7 @@ from gi.repository import Gtk, Gdk, GLib, Pango
 
 from .core import (Config, DoubleModifierDetector, History, choose_popup_position,
                    point_in_window, is_same_window, render_template, runtime_socket,
-                   shortcut_label)
+                   popup_activation_args, selected_modifier_codes, shortcut_label)
 
 CSS = b"""
 window.clibor-window { background-color: transparent; }
@@ -125,10 +125,11 @@ def dispatch_to_existing(command):
 
 class XRecordListener(threading.Thread):
     """Passive XRecord listener; does not grab, block or log actual keystrokes."""
-    def __init__(self, on_trigger, timeout_ms, on_button_press=None):
+    def __init__(self, on_trigger, timeout_ms, on_button_press=None, get_hotkey_settings=None):
         super().__init__(name="xrecord-double-ctrl", daemon=True)
         self.on_trigger = on_trigger
         self.on_button_press = on_button_press
+        self.get_hotkey_settings = get_hotkey_settings or (lambda: {})
         self.detector = DoubleModifierDetector(timeout_ms)
         self.error = None
 
@@ -142,13 +143,16 @@ class XRecordListener(threading.Thread):
             self.error = "XRecord 拡張が利用できません。ダブル修飾キーは無効です。"
             print(self.error, file=sys.stderr)
             return
-        modifier_codes = {control.keysym_to_keycode(ks) for ks in (
-            XK.XK_Control_L, XK.XK_Control_R,
-            XK.XK_Alt_L, XK.XK_Alt_R,
-            XK.XK_Shift_L, XK.XK_Shift_R,
-            getattr(XK, "XK_ISO_Level3_Shift", 0),
-            getattr(XK, "XK_Mode_switch", 0))}
-        modifier_codes.discard(0)
+        keycode_groups = {
+            "ctrl": {control.keysym_to_keycode(ks) for ks in (XK.XK_Control_L, XK.XK_Control_R)},
+            "alt": {control.keysym_to_keycode(ks) for ks in (
+                XK.XK_Alt_L, XK.XK_Alt_R,
+                # python-xlib omits this standard X11 keysym on some versions.
+                getattr(XK, "XK_ISO_Level3_Shift", 0xFE03), getattr(XK, "XK_Mode_switch", 0))},
+            "shift": {control.keysym_to_keycode(ks) for ks in (XK.XK_Shift_L, XK.XK_Shift_R)},
+        }
+        for codes in keycode_groups.values():
+            codes.discard(0)
 
         def callback(reply):
             if reply.category != record.FromServer or reply.client_swapped or not reply.data:
@@ -162,6 +166,7 @@ class XRecordListener(threading.Thread):
                     continue
                 if event.type not in (X.KeyPress, X.KeyRelease):
                     continue
+                modifier_codes = selected_modifier_codes(keycode_groups, self.get_hotkey_settings())
                 if self.detector.handle(event.type == X.KeyPress, event.detail, modifier_codes):
                     GLib.idle_add(self.on_trigger)
 
@@ -230,16 +235,20 @@ class HistoryPopup(Gtk.Window):
         tabs.get_style_context().add_class("clibor-tabs")
         tabs.set_size_request(-1, 23)
         self.tab_buttons = {}
+        tab_widths = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
         for key, title_text in (("history", "クリップボード"), ("templates", "定型文")):
             button = Gtk.Button(label=title_text)
             button.set_relief(Gtk.ReliefStyle.NONE)
             button.set_size_request(-1, 21)
+            tab_widths.add_widget(button)
             button.get_style_context().add_class("clibor-tab")
             button.connect("clicked", lambda _b, k=key: self.select_tab(k))
             tabs.pack_start(button, True, True, 0)
             self.tab_buttons[key] = button
         setting_btn = Gtk.Button.new_from_icon_name("emblem-system-symbolic", Gtk.IconSize.MENU)
         setting_btn.set_relief(Gtk.ReliefStyle.NONE)
+        setting_btn.set_size_request(21, 21)
+        setting_btn.get_style_context().add_class("clibor-tab")
         setting_btn.set_tooltip_text("設定を開く")
         setting_btn.connect("clicked", lambda *_: (self.hide(), app.show_settings()))
         tabs.pack_end(setting_btn, False, False, 0)
@@ -314,6 +323,37 @@ class HistoryPopup(Gtk.Window):
             self.hide()
         return False
 
+    def activate_after_map(self):
+        # Let GTK and the window manager finish mapping before asking GNOME to
+        # activate this utility window. Calling windowactivate in open() races
+        # the map and can leave the popup unfocused (then hidden by focus-out).
+        if self.get_visible() and self.get_window():
+            call_xdotool(*popup_activation_args(self.get_window().get_xid()), timeout=0.5)
+        return False
+
+    def reposition_after_map(self, cursor_x, cursor_y, work_x, work_y, work_width, work_height):
+        # GTK can allocate a different natural height from the estimate used
+        # before mapping. Recompute corner placement with the mapped size.
+        if not self.get_visible():
+            return False
+        width, height = self.get_size()
+        if self.app.config.values["popup_follow_cursor"]:
+            x, y = choose_popup_position(
+                cursor_x, cursor_y, width, height,
+                work_x, work_y, work_width, work_height)
+        else:
+            saved_x = self.app.config.values.get("popup_x")
+            saved_y = self.app.config.values.get("popup_y")
+            if saved_x is None or saved_y is None:
+                x, y = choose_popup_position(
+                    cursor_x, cursor_y, width, height,
+                    work_x, work_y, work_width, work_height)
+            else:
+                x = max(work_x, min(saved_x, max(work_x, work_x + work_width - width)))
+                y = max(work_y, min(saved_y, max(work_y, work_y + work_height - height)))
+        self.move(x, y)
+        return False
+
     def open(self, tab="history"):
         # Always reopen at the pointer by default; stored coordinates remain
         # available when users turn off "follow cursor" in Settings.
@@ -357,8 +397,9 @@ class HistoryPopup(Gtk.Window):
         self.move(target_x, target_y)
         self.show_all()
         self.present()
-        if self.get_window():
-            call_xdotool("windowactivate", "--sync", self.get_window().get_xid(), timeout=2.0)
+        GLib.timeout_add(50, self.reposition_after_map, x, y,
+                         bounds.x, bounds.y, bounds.width, bounds.height)
+        GLib.timeout_add(80, self.activate_after_map)
         self.list_box.grab_focus()
         row = self.list_box.get_row_at_index(0)
         if row:
@@ -509,6 +550,14 @@ class Settings(Gtk.Window):
         self.switch(body, "履歴をディスクに保存", "save_history", "変更は次回起動時に反映。既存の保存データは自動削除されません")
         self.switch(body, "外側をクリックしたら閉じる", "close_on_outside_click", "既定では外側クリックで閉じます")
         self.switch(body, "カーソル位置を基準に開く", "popup_follow_cursor", "ポップアップ左下をカーソルに合わせ、画面端では自動反転")
+        self.section(body, "起動キー")
+        hotkey_help = Gtk.Label(label="左右どちらのキーも選べます。同じキーを短く2回押すと起動します。", xalign=0)
+        hotkey_help.set_line_wrap(True)
+        hotkey_help.get_style_context().add_class("clibor-subtle")
+        body.pack_start(hotkey_help, False, False, 0)
+        self.switch(body, "Ctrlを2回押す", "hotkey_ctrl")
+        self.switch(body, "Alt／AltGrを2回押す", "hotkey_alt")
+        self.switch(body, "Shiftを2回押す", "hotkey_shift")
         self.number(body, "修飾キー2回の判定時間（ms）", "double_tap_ms", 200, 800, 25)
         self.number(body, "自動貼り付けの待機時間（ms）", "paste_delay_ms", 40, 1500, 20)
         self.section(body, "履歴と表示")
@@ -687,8 +736,9 @@ class Application:
         self.settings = None
         self.ipc = IPC(self.dispatch)
         self.ipc.start()
-        self.key_listener = XRecordListener(self.toggle_popup, self.config.values["double_tap_ms"],
-                                            self.popup.dismiss_on_outside_click)
+        self.key_listener = XRecordListener(
+            self.toggle_popup, self.config.values["double_tap_ms"],
+            self.popup.dismiss_on_outside_click, lambda: self.config.values)
         self.key_listener.start()
         # Capture clipboard content already present when the app starts.
         GLib.idle_add(self.read_clipboard)

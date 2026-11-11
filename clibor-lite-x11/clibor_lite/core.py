@@ -20,6 +20,9 @@ DEFAULT_SETTINGS = {
     "clipboard_monitor": True,
     "save_history": True,
     "double_tap_ms": 500,
+    "hotkey_ctrl": True,
+    "hotkey_alt": False,
+    "hotkey_shift": False,
     "max_history": 1000,
     "visible_history": 30,
     "max_text_chars": 200000,
@@ -72,7 +75,8 @@ def sanitize_settings(raw):
     cfg["templates"] = [dict(t) for t in DEFAULT_TEMPLATES]
     if not isinstance(raw, dict):
         return cfg
-    for key in ("auto_paste", "clipboard_monitor", "save_history", "sticky_popup", "popup_follow_cursor"):
+    for key in ("auto_paste", "clipboard_monitor", "save_history", "sticky_popup", "popup_follow_cursor",
+                "hotkey_ctrl", "hotkey_alt", "hotkey_shift"):
         if isinstance(raw.get(key), bool):
             cfg[key] = raw[key]
     for key, low, high in (("double_tap_ms", 200, 800), ("max_history", 10, 10000),
@@ -179,6 +183,22 @@ def choose_popup_position(cursor_x, cursor_y, width, height,
 def point_in_window(px, py, x, y, width, height):
     """Determine whether a global mouse press was within popup bounds."""
     return x <= px < x + width and y <= py < y + height
+
+
+def popup_activation_args(window_id):
+    """Request popup activation without blocking GTK's event loop for WM sync."""
+    return ("windowactivate", str(window_id))
+
+
+def selected_modifier_codes(keycode_groups, settings):
+    """Return keycodes for modifier double-taps enabled in settings."""
+    return {
+        code
+        for group, codes in keycode_groups.items()
+        if settings.get(f"hotkey_{group}", False)
+        for code in codes
+        if code
+    }
 
 
 class DoubleModifierDetector:

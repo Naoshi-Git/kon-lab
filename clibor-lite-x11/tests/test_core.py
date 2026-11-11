@@ -6,7 +6,8 @@ from datetime import datetime
 from pathlib import Path
 
 from clibor_lite.core import (Config, DoubleCtrlDetector, History, is_same_window, shortcut_label,
-                              choose_popup_position, point_in_window, render_template, sanitize_settings)
+                              choose_popup_position, point_in_window, popup_activation_args,
+                              render_template, sanitize_settings, selected_modifier_codes)
 
 
 class DetectorTests(unittest.TestCase):
@@ -106,6 +107,16 @@ class DetectorTests(unittest.TestCase):
 
 
 class ModifierExpansionTests(unittest.TestCase):
+    def test_modifier_double_tap_selection_defaults_to_ctrl_only(self):
+        cfg = sanitize_settings({})
+        groups = {"ctrl": {37, 105}, "alt": {64, 108, 92}, "shift": {50, 62}}
+        self.assertEqual(selected_modifier_codes(groups, cfg), {37, 105})
+
+    def test_modifier_double_tap_selection_is_configurable(self):
+        cfg = sanitize_settings({"hotkey_ctrl": False, "hotkey_alt": True, "hotkey_shift": True})
+        groups = {"ctrl": {37, 105}, "alt": {64, 108, 92}, "shift": {50, 62}}
+        self.assertEqual(selected_modifier_codes(groups, cfg), {64, 108, 92, 50, 62})
+
     def test_alt_double_tap(self):
         d = DoubleCtrlDetector(500)
         keys = {37, 105, 64, 108, 50, 62}
@@ -161,6 +172,11 @@ class ModifierExpansionTests(unittest.TestCase):
 
 
 class PopupGeometryTests(unittest.TestCase):
+    def test_popup_activation_is_nonblocking(self):
+        args = popup_activation_args(12345)
+        self.assertEqual(args, ("windowactivate", "12345"))
+        self.assertNotIn("--sync", args)
+
     def pos(self, cx, cy, width=300, height=350, work=(0, 0, 1920, 1080)):
         return choose_popup_position(cx, cy, width, height, *work)
 
